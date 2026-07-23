@@ -36,7 +36,7 @@ class Blueworx_TopTierTutors_Logo_Carousel_Widget extends Widget_Base {
 	 * @return string
 	 */
 	public function get_title() {
-		return __( 'Logo Carousel', 'blueworx-client-toptiertutors' );
+		return __( 'TTT Logo Carousel', 'blueworx-client-toptiertutors' );
 	}
 
 	/**
