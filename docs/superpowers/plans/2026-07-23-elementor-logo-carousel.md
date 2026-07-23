@@ -1243,9 +1243,14 @@ test('keeps running on hover when pause on hover is off', async ({ page }) => {
 });
 
 test.describe('with reduced motion', () => {
-  test.use({ reducedMotion: 'reduce' });
-
   test('does not animate, clone, or trap the logos out of reach', async ({ page }) => {
+    // Set explicitly rather than through test.use({ reducedMotion: 'reduce' }):
+    // on Playwright 1.61.1 that fixture does not reach the browser context with
+    // this config, so the media query stays false and the specs below would be
+    // asserting against un-reduced motion. Verified: test.use gives false,
+    // emulateMedia gives true. It must precede goto(), or the script reads the
+    // wrong value when it initialises.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto(fixtures().marquee);
     await page.waitForFunction(() => document.querySelector('[data-ttt-ready="1"]') !== null);
 
