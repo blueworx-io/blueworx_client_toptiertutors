@@ -690,15 +690,17 @@ test('fades both edges with a mask', async ({ page }) => {
   expect(mask).toContain('92.308%');
 });
 
-test('breaks out of its container to full width', async ({ page }) => {
+test('breaks out of the content column to the viewport width', async ({ page }) => {
   await page.goto(fixtures().marquee);
 
   const widths = await page.locator('.ttt-marquee').evaluate((el) => ({
     marquee: el.getBoundingClientRect().width,
-    parent: el.parentElement.getBoundingClientRect().width,
+    viewport: document.documentElement.clientWidth,
   }));
 
-  expect(widths.marquee).toBeGreaterThan(widths.parent);
+  // At least, rather than exactly: the CSS fallback is 100vw, which includes
+  // the scrollbar. Task 3 measures the true client width and tightens this.
+  expect(widths.marquee).toBeGreaterThanOrEqual(widths.viewport - 1);
 });
 ```
 
@@ -710,15 +712,18 @@ cannot fix.
 
 ```js
 
-test('leaves a non-full-bleed marquee inside its container', async ({ page }) => {
+test('leaves a non-full-bleed marquee in the content column', async ({ page }) => {
   await page.goto(fixtures().marqueePlain);
 
   const widths = await page.locator('.ttt-marquee').evaluate((el) => ({
     marquee: el.getBoundingClientRect().width,
-    parent: el.parentElement.getBoundingClientRect().width,
+    viewport: document.documentElement.clientWidth,
   }));
 
-  expect(widths.marquee).toBeLessThanOrEqual(widths.parent + 1);
+  // Compared against the viewport, not the parent: the theme's .entry-content
+  // is itself alignfull, so the parent is viewport-wide either way and tells
+  // you nothing about whether the break-out happened.
+  expect(widths.marquee).toBeLessThan(widths.viewport);
 });
 ```
 
