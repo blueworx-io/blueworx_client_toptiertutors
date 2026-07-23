@@ -1,9 +1,9 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
 
-// Seeded by tests/global-setup.js, which publishes the page through WordPress
+// Seeded by tests/global-setup.js, which publishes the pages through WordPress
 // itself rather than driving the block editor.
-const FIXTURE_URL = () => String(process.env.TTT_FIXTURE_URL);
+const FIXTURE_URL = () => JSON.parse(String(process.env.TTT_FIXTURES)).shortcode;
 
 test('the site serves its home page', async ({ page }) => {
   const response = await page.goto('/');
