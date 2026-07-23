@@ -1300,7 +1300,9 @@ Append to `assets/logo-carousel.css`:
 npx playwright test
 ```
 
-Expected: PASS — 3 smoke plus 16 marquee tests, 19 total, 0 skipped.
+Expected: PASS — 3 smoke plus 17 marquee tests, 20 total, 0 skipped. (The count
+grew by one against the original plan: Task 3's review added a re-initialisation
+test.)
 
 - [ ] **Step 5: Commit**
 
