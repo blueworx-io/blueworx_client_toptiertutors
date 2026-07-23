@@ -4,6 +4,12 @@ All notable changes to this plugin are documented here. Versions follow semver �
 patch for fixes, minor for features — and every pull request bumps the version
 and adds its entry here (CI enforces both).
 
+## 0.2.1
+
+- Plugin name shown in WordPress is now "BlueWorx Labs | Top Tier Tutors".
+  Display only — the plugin folder, text domain and update checker are unchanged,
+  so an installed copy updates in place rather than appearing as a second plugin.
+
 ## 0.2.0
 
 - Logo Carousel Elementor widget: a full-bleed, continuously scrolling logo
