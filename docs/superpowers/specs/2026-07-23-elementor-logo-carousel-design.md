@@ -120,7 +120,7 @@ nothing is announced twice.
 | Tile width | `auto`, `max-width: none` | `max-width: none` is required — themes commonly set `img { max-width: 100% }`, which would squash the wide logos |
 | Gap | `60px` | Responsive control |
 | Edge fade | `mask-image: linear-gradient(to right, transparent 0 7.692%, #000 50%, transparent 92.308% 100%)` | The inverse of Figma's `#fafafa` overlay. A mask assumes nothing about the section background, so it survives a background colour change; an overlay would not. Ships with the `-webkit-` prefix |
-| Full bleed | `width: var(--ttt-vw); margin-inline: calc(50% - var(--ttt-vw) / 2)` | `--ttt-vw` is set by JS from `document.documentElement.clientWidth`. Plain `100vw` includes the scrollbar and causes horizontal page overflow. CSS falls back to `100vw` before JS runs |
+| Full bleed | `width: var(--ttt-vw); max-width: none; left: 50%; transform: translateX(-50%)` | `--ttt-vw` is set by JS from `document.documentElement.clientWidth`. Plain `100vw` includes the scrollbar and causes horizontal page overflow. CSS falls back to `100vw` before JS runs. `max-width: none` is required: block themes cap constrained-layout children with `max-width: var(--wp--style--global--content-size)`, and max-width beats width at any specificity. Centring is `left`/`transform` rather than negative margins because the same theme rule sets `margin-left: auto`, which a margin-based break-out has to out-specify on every theme |
 
 Heading typography (Poppins SemiBold 22px / 1.6, `#0e0e0e`) is out of scope — it
 belongs to the separate heading widget.
