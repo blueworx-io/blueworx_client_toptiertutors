@@ -186,3 +186,40 @@ test('re-initialising an existing marquee relayouts rather than no-opping', asyn
   expect(durations.before).toBeGreaterThan(0);
   expect(durations.after).toBeCloseTo(durations.before * 2, 1);
 });
+
+test('pauses on hover when asked to', async ({ page }) => {
+  await page.goto(fixtures().marquee);
+  await page.waitForFunction(() => document.querySelector('[data-ttt-clone]') !== null);
+
+  const track = page.locator('.ttt-marquee__track');
+  await expect(track).toHaveCSS('animation-play-state', 'running');
+
+  await page.locator('.ttt-marquee').hover();
+  await expect(track).toHaveCSS('animation-play-state', 'paused');
+});
+
+test('keeps running on hover when pause on hover is off', async ({ page }) => {
+  await page.goto(fixtures().marqueePlain);
+  await page.waitForFunction(() => document.querySelector('[data-ttt-clone]') !== null);
+
+  await page.locator('.ttt-marquee').hover();
+  await expect(page.locator('.ttt-marquee__track')).toHaveCSS('animation-play-state', 'running');
+});
+
+test.describe('with reduced motion', () => {
+  test('does not animate, clone, or trap the logos out of reach', async ({ page }) => {
+    // Set explicitly rather than through test.use({ reducedMotion: 'reduce' }):
+    // on Playwright 1.61.1 that fixture does not reach the browser context with
+    // this config, so the media query stays false and the specs below would be
+    // asserting against un-reduced motion. Verified: test.use gives false,
+    // emulateMedia gives true. It must precede goto(), or the script reads the
+    // wrong value when it initialises.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto(fixtures().marquee);
+    await page.waitForFunction(() => document.querySelector('[data-ttt-ready="1"]') !== null);
+
+    await expect(page.locator('.ttt-marquee__item[data-ttt-clone="1"]')).toHaveCount(0);
+    await expect(page.locator('.ttt-marquee__track')).toHaveCSS('animation-name', 'none');
+    await expect(page.locator('.ttt-marquee__viewport')).toHaveCSS('overflow-x', 'auto');
+  });
+});

@@ -108,3 +108,27 @@
 		transform: translateX(-50%);
 	}
 }
+
+/*
+ * focus-within as well as hover: a keyboard user tabbing into the strip needs
+ * it to hold still just as much as a mouse user reading it does.
+ */
+.ttt-marquee[data-pause-on-hover="1"]:hover .ttt-marquee__track,
+.ttt-marquee[data-pause-on-hover="1"]:focus-within .ttt-marquee__track {
+	animation-play-state: paused;
+}
+
+/*
+ * Reduced motion drops the animation entirely. The strip then has to stay
+ * reachable, so the viewport becomes scrollable rather than clipping whatever
+ * does not fit.
+ */
+@media (prefers-reduced-motion: reduce) {
+	.ttt-marquee__track {
+		animation: none;
+	}
+
+	.ttt-marquee__viewport {
+		overflow-x: auto;
+	}
+}
