@@ -1,0 +1,11 @@
+/* Top Tier Tutors — front-end styles. */
+
+.ttt-root {
+	box-sizing: border-box;
+}
+
+.ttt-root *,
+.ttt-root *::before,
+.ttt-root *::after {
+	box-sizing: inherit;
+}

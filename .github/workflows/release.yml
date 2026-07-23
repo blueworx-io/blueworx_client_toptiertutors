@@ -1,0 +1,15 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+jobs:
+  # plugin_slug is deliberately not set — it derives from the main plugin file's
+  # basename (blueworx-client-toptiertutors.php), which already matches the
+  # folder name and the slug in buildUpdateChecker(). One less place to keep in
+  # sync by hand.
+  release:
+    uses: blueworx-io/bluegroup_core_foundation/.github/workflows/release-wordpress.yml@main
+    # Required — a reusable workflow cannot widen the permissions its caller
+    # gives it, so without this the publish step fails with 403.
+    permissions:
+      contents: write

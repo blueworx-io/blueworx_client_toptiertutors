@@ -1,0 +1,12 @@
+name: CI
+on: pull_request
+jobs:
+  guardrails:
+    uses: blueworx-io/bluegroup_core_foundation/.github/workflows/ci-wordpress.yml@main
+    with:
+      plugin_slug: blueworx-client-toptiertutors
+      # Provision a disposable WordPress on the runner rather than pointing at a
+      # staging host, so the Playwright gate cannot silently skip against a dead
+      # target. See docs/wordpress-test-harness.md in the foundation.
+      use_local_wordpress: true
+    secrets: inherit

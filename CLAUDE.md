@@ -1,0 +1,147 @@
+# CLAUDE.md — blueworx_client_toptiertutors
+
+Copied from `bluegroup_core_foundation`'s `CLAUDE.md.template` so the guardrails travel with the repo rather than depending on whose machine it's opened on. Full detail, all copy-paste prompts, and the complete Recipe Book live in the `bluegroup_core_foundation` repo and the Team Guidelines doc — this file is the condensed version Claude Code needs every session, and should never contradict them. Keep it in sync with the template; project-specific notes go in the section at the end.
+
+## How Projects Are Structured
+
+- Every project is its own standalone repo — there is no monorepo
+- Every project points at `bluegroup_core_foundation` for shared CI guardrails, permissions, and skills — never repeat those rules inside a project repo
+- Projects don't have to share components or look alike — only the process is shared, not the design
+- New projects are set up by pasting the matching Starter Prompt (standalone / WordPress plugin / headless) into Claude Code — there are no starter template repos to create from
+
+## The Flow
+
+Design System → Figma/Lovable/Claude Design → Claude Design (single source of truth) → handoff (export, or Claude Design's direct GitHub sync) → Claude Code builds → branch → pull request → automatic checks → review → merge → deploy
+
+Every build or change starts from an approved GitHub Issue.
+
+## Hard Guardrails (enforced by CI on every project, every type)
+
+- Lint passes
+- Build passes
+- Version bumped on the pull request
+- Changelog updated alongside the version bump
+- No new dependency without prior approval (`approved-deps.json`)
+- New functionality or a real bug fix has a Playwright test
+
+## Testing (WordPress plugins)
+
+- Test against the **local WordPress harness**, not a hosted staging site. One command,
+  no Docker, uses your own PHP:
+  `node ../bluegroup_core_foundation/scripts/wp-test-env.mjs up --plugin .`
+  then `PLAYWRIGHT_BASE_URL=http://127.0.0.1:8881 WP_ADMIN_USER=admin WP_ADMIN_PASS=wptest-admin-pw npx playwright test --workers=1`
+- In CI, pass `use_local_wordpress: true` instead of `preview_url`. Add `.wp-test/` to `.gitignore`
+- **A skipped test is not a passing test.** CI fails a run that executes zero tests, because
+  a placeholder URL once let a whole suite skip itself while reporting green for months
+- Prefer tests that create what they need over tests that assume ambient site state
+- Full guide, including why each setting exists: `docs/wordpress-test-harness.md` in the foundation
+
+## Golden Rules
+
+- Always work on a branch, never main
+- Every change goes through a pull request
+- CI guardrails must pass — never bypassed, except a rare, written, Luke-approved emergency override
+- Anyone with repo access can review and merge — no second sign-off required
+
+## Versioning
+
+- Patch bump for fixes, minor bump for new features
+- Bump automatically alongside the change, and update the changelog to match — never wait to be asked
+
+## Linting
+
+- Run the linter once, as a final check — never loop lint, auto-fix, re-lint during a task
+- Present any findings to the user at the end of the session and let them decide whether to action them
+- Only fix lint issues after the user approves
+
+## Deployment
+
+Do this proactively at the end of any session with deployable changes — never wait to be asked.
+
+- Standalone: `npm install`, `npm run build`, then remove `node_modules` to leave the folder clean for manual zipping
+- WordPress plugin: **updates ship as GitHub Releases, not zips.** At session end, do the part that belongs to the change: bump the plugin version and update the changelog, on the branch, in the PR. Nothing else
+  - **Tagging is not a session-end step.** Releases are cut only after the PR is reviewed and merged, and only when asked: `git tag v1.2.0 && git push origin v1.2.0`. Never merge to main or push a tag on your own initiative — that is a release decision, not a build step
+  - Once tagged, CI verifies the tag matches the plugin header, builds the zip, and publishes the Release; sites running the vendored update checker install it themselves
+  - A hand-built zip is only for a plugin's **first** install on a site, or a repo not yet on the release workflow
+- When a hand-built zip is genuinely needed: build it **one level up from the repo** at `<plugin-parent-dir>/<plugin-slug>.zip` — never inside the repo working tree. Remove any older `<slug>.zip` in that parent folder first. The zip is the deployment artifact, never copy individual files
+  - **If the repo ships a zip build script, run it** (e.g. `npm run build:zip`) and skip the manual recipe below. A repo that has one uses it to declare exactly which files may enter the artifact and to verify the result, and CI checks the same thing on every PR. Building the zip by hand bypasses that — zipping the folder is how development-only files reach a live site. If the wrong files ship, fix the script's allowlist; never hand-edit the zip
+  - The archive **must use forward slashes** (`<slug>/<slug>.php`, nested one level) — WordPress hosts are Linux and a backslash zip mis-extracts, reporting "Plugin file does not exist." on activate
+  - **Never use PowerShell `Compress-Archive`** — on Windows PS 5.1 it writes backslash entries (the exact bug above). Build with **bsdtar**: `/c/Windows/System32/tar.exe -a -c -f ../<slug>.zip -C dist <slug>` (Git Bash) or `& "$env:WINDIR\System32\tar.exe" -a -c -f "..\<slug>.zip" -C dist <slug>` (PowerShell); GNU `tar` can't write zip, so call System32 `tar.exe` explicitly
+  - Verify before handing off: `unzip -l ../<slug>.zip` — every entry must read `<slug>/...` with `/`. Any `\` means the zip is broken; rebuild. Don't deliver a zip you haven't listed
+- Headless: nothing manual — CI and Netlify handle install, build, and deploy once merged
+
+## Approved Tools & Styles
+
+- Framework (headless projects): Next.js (App Router) + TypeScript — scaffolded via create-next-app
+- Component base: Radix Themes
+- Icons: lucide-react
+- Styling: Tailwind CSS
+- Design tokens: styles.refero.design
+- Animation: tailwindcss-animate for simple cases, GSAP for complex cases, across every project type including WordPress
+- Inspiration only, never copied directly: 21st.dev
+- No page builders (Elementor etc.) — WordPress sites are built as a plugin, in code, never straight into WordPress core or a loose theme
+
+## Skill Usage Policy
+
+These skills load automatically from the shared `bluegroup_core_foundation` settings — nobody enables them by hand (graphify is the one per-machine exception, below). **You MUST invoke each one the moment its trigger applies, before doing the work — no human will remind you.** Say "Using [skill] because [trigger]" out loud so the choice is visible and correctable.
+
+| When this happens | You MUST use | How |
+|---|---|---|
+| Starting any feature, component, or behaviour change | brainstorming → writing-plans | Explore intent with `superpowers:brainstorming` before entering plan mode, then capture the plan with `superpowers:writing-plans` before touching code |
+| Executing an approved written plan | executing-plans | Drive it with `superpowers:executing-plans` and honour its review checkpoints |
+| Implementing any feature or bug fix | test-driven-development | Write the failing test first with `superpowers:test-driven-development`, before implementation code |
+| Any bug, test failure, or unexpected behaviour | systematic-debugging | Find root cause with `superpowers:systematic-debugging` before proposing or writing a fix |
+| A security-sensitive change (auth, secrets, input handling, uploads, payments, access control) | security-review | Run `security-review` before committing |
+| About to claim work is done / before any commit or PR | verification-before-completion | Run `superpowers:verification-before-completion` and show real command output — evidence before claims |
+| Work complete, before merge | requesting-code-review → finishing-a-development-branch | Get review via `superpowers:requesting-code-review`, then integrate with `superpowers:finishing-a-development-branch` |
+| Any question about this codebase's architecture, file relationships, or content | graphify | Treat it as a graph query first (see below) |
+| A brand-new repo that has no `CLAUDE.md` yet | init | Generate the project's `CLAUDE.md` with `init` |
+| Repeated permission prompts for safe, read-only commands | fewer-permission-prompts | Run `fewer-permission-prompts` to add a scoped allowlist to the project's `.claude/settings.json` |
+
+### graphify — per-machine install + usage
+
+- **Install once per machine:** `uv tool install graphifyy && graphify install`. It's a Python CLI (PyPI `graphifyy`), not a config-enabled plugin — the shared settings only mark it approved.
+- **PATH gotcha:** the CLI installs to `~/.local/bin` (Windows: `%USERPROFILE%\.local\bin`), which may not be on PATH. If `graphify` isn't found, add that directory to PATH — don't reinstall.
+- **Usage:** for any question about this project's architecture, how files relate, or where something lives, treat it as a graphify query first. If `graphify-out/` exists, query the existing graph; if none exists yet, build it, then query.
+
+### Enforced vs model-driven — know the difference
+
+- **Deterministic (enforced every time by CI):** lint, build, version bump, changelog, approved-deps, Playwright test — the Hard Guardrails above. Never bypass these; the triggers below never override them.
+- **Model-driven (this policy + each skill's own description):** every trigger in the table. Strong, but they fire on *your* judgement, not a guarantee — which is exactly why the "say it out loud" rule exists. There are deliberately no per-skill hooks: these skills fire on the *kind* of change (a bug, a security-sensitive edit, a feature), which a tool/event hook can't detect without misfiring, and the truly must-happen-every-time checks already live in CI.
+
+## Model Guidance
+
+- Default for building, Issues, Milestones: Claude Sonnet
+- A genuinely hard bug or architecture decision: Claude Opus
+- A very large or complex build (major migration, multi-day build): Claude Fable
+- Quick, mechanical, high-volume work: Claude Haiku
+- Claude Design: the same tiers, picked per project in-app
+
+## Naming Conventions
+
+- Repos: `blueworx_project_projectname` or `blueworx_client_clientname`
+- Claude Design: `Project | ProjectName` or `Client | ClientName`
+- Netlify: `blueworx-project-projectname` or `blueworx-client-clientname`
+- Branches: short and descriptive — e.g. `add-contact-form`, `fix-header-bug`
+- GitHub Issues: short, action-oriented title matching the branch; type set with a label, not in the title
+- GitHub Milestones: short, descriptive phase name
+
+## Recipe Book
+
+Before building anything that solves a common, recurring problem (contact form, login, file upload, payment, search, error/loading states, WordPress shortcodes on a headless site), check the Recipe Book in the Team Guidelines doc first and follow the standard approach if one exists. Propose new recipes for Luke's approval rather than reinventing an approach per project.
+
+## Secrets
+
+Stored as environment variables in Netlify. Never committed to a repo or shared any other way.
+
+## Accessibility
+
+Meaningful alt text, real form labels, readable contrast, full keyboard access, and heading order used correctly — on every screen, every project type. Not a blocking CI check today, just how things get built.
+
+## This project
+
+- **Slug:** `blueworx-client-toptiertutors` — the plugin folder name, the string in `buildUpdateChecker()`, and the `plugin_slug` CI input. All three must agree.
+- **Status:** scaffold. `[toptiertutors]` renders a placeholder wrapper (`.ttt-root`); feature code goes in `includes/`, registered from `class-plugin.php`.
+- **Testing:** `npm run wp:up` boots the foundation's disposable WordPress on `http://127.0.0.1:8881` (expects `bluegroup_core_foundation` cloned alongside this repo), then `WP_ADMIN_USER=admin WP_ADMIN_PASS=wptest-admin-pw npx playwright test`. `npm run wp:down` tears it down.
+- **Releases:** auto-update via GitHub Releases with the vendored Plugin Update Checker. Each site needs `BLUEWORX_PLUGIN_UPDATE_TOKEN` in `wp-config.php` — the repo is private.
+- **`plugin-update-checker/` is vendored on purpose.** Don't lint, reformat, or refactor it; upgrade by swapping the folder for a newer tag.
