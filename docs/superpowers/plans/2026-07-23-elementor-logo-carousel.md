@@ -953,6 +953,26 @@ test('measures the viewport width without the scrollbar', async ({ page }) => {
   // Built on 100vw instead, a full-bleed strip overflows by the scrollbar width.
   expect(measured.docScroll).toBeLessThanOrEqual(measured.clientWidth + 1);
 });
+
+test('re-initialising an existing marquee relayouts rather than no-opping', async ({ page }) => {
+  await page.goto(fixtures().marquee);
+  await page.waitForFunction(() => document.querySelector('[data-ttt-clone]') !== null);
+
+  const durations = await page.locator('.ttt-marquee').evaluate((root) => {
+    const track = root.querySelector('.ttt-marquee__track');
+    const before = parseFloat(getComputedStyle(track).animationDuration);
+
+    root.setAttribute('data-speed', '30');
+    window.tttMarquee.init(root);
+
+    return { before, after: parseFloat(getComputedStyle(track).animationDuration) };
+  });
+
+  // Task 5 re-inits a widget the Elementor editor redrew. Halving the speed has
+  // to double the time taken to cover the same track, or that call did nothing.
+  expect(durations.before).toBeGreaterThan(0);
+  expect(durations.after).toBeCloseTo(durations.before * 2, 1);
+});
 ```
 
 - [ ] **Step 2: Run the tests to verify they fail**
@@ -1101,39 +1121,44 @@ Create `assets/logo-carousel.js`:
 	 * @return {void}
 	 */
 	function init(root) {
-		if (!root || root.getAttribute('data-ttt-ready') === '1') {
+		if (!root) {
 			return;
 		}
 
-		root.setAttribute('data-ttt-ready', '1');
+		// Listeners attach once, but the layout always re-runs. A second init()
+		// — the Elementor editor redrawing a widget in place — must reflect
+		// whatever changed rather than silently doing nothing.
+		if (root.getAttribute('data-ttt-ready') !== '1') {
+			root.setAttribute('data-ttt-ready', '1');
 
-		var relayout = function () {
-			layout(root);
-		};
+			var relayout = function () {
+				layout(root);
+			};
 
-		// Images have no measurable width until they load.
-		var images = root.querySelectorAll('img');
+			// Images have no measurable width until they load.
+			var images = root.querySelectorAll('img');
 
-		for (var i = 0; i < images.length; i++) {
-			if (!images[i].complete) {
-				images[i].addEventListener('load', relayout);
-				images[i].addEventListener('error', relayout);
-			}
-		}
-
-		if (typeof window.ResizeObserver === 'function') {
-			var frame = null;
-			var observer = new window.ResizeObserver(function () {
-				if (frame) {
-					window.cancelAnimationFrame(frame);
+			for (var i = 0; i < images.length; i++) {
+				if (!images[i].complete) {
+					images[i].addEventListener('load', relayout);
+					images[i].addEventListener('error', relayout);
 				}
+			}
 
-				frame = window.requestAnimationFrame(relayout);
-			});
+			if (typeof window.ResizeObserver === 'function') {
+				var frame = null;
+				var observer = new window.ResizeObserver(function () {
+					if (frame) {
+						window.cancelAnimationFrame(frame);
+					}
 
-			observer.observe(root);
-		} else {
-			window.addEventListener('resize', relayout);
+					frame = window.requestAnimationFrame(relayout);
+				});
+
+				observer.observe(root);
+			} else {
+				window.addEventListener('resize', relayout);
+			}
 		}
 
 		layout(root);
