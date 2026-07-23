@@ -690,20 +690,25 @@ test('fades both edges with a mask', async ({ page }) => {
   expect(mask).toContain('92.308%');
 });
 
-test('breaks out to full width without causing page overflow', async ({ page }) => {
+test('breaks out of its container to full width', async ({ page }) => {
   await page.goto(fixtures().marquee);
 
   const widths = await page.locator('.ttt-marquee').evaluate((el) => ({
     marquee: el.getBoundingClientRect().width,
     parent: el.parentElement.getBoundingClientRect().width,
-    docScroll: document.documentElement.scrollWidth,
-    docClient: document.documentElement.clientWidth,
   }));
 
   expect(widths.marquee).toBeGreaterThan(widths.parent);
-  // A full-bleed element built on 100vw would overflow by the scrollbar width.
-  expect(widths.docScroll).toBeLessThanOrEqual(widths.docClient + 1);
 });
+```
+
+The companion assertion — that full bleed does not push the page into
+horizontal overflow — belongs to Task 3, not here. It depends on `--ttt-vw`,
+which JavaScript measures; until Task 3 lands, the CSS falls back to `100vw`,
+which includes the scrollbar and would fail this task for a reason this task
+cannot fix.
+
+```js
 
 test('leaves a non-full-bleed marquee inside its container', async ({ page }) => {
   await page.goto(fixtures().marqueePlain);
@@ -920,9 +925,12 @@ test('measures the viewport width without the scrollbar', async ({ page }) => {
   const measured = await page.locator('.ttt-marquee').evaluate((root) => ({
     varValue: parseFloat(getComputedStyle(root).getPropertyValue('--ttt-vw')),
     clientWidth: document.documentElement.clientWidth,
+    docScroll: document.documentElement.scrollWidth,
   }));
 
   expect(measured.varValue).toBe(measured.clientWidth);
+  // Built on 100vw instead, a full-bleed strip overflows by the scrollbar width.
+  expect(measured.docScroll).toBeLessThanOrEqual(measured.clientWidth + 1);
 });
 ```
 
