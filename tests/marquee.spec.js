@@ -6,7 +6,10 @@ const fixtures = () => JSON.parse(String(process.env.TTT_FIXTURES));
 test('renders one item per selected logo, with alt text', async ({ page }) => {
   await page.goto(fixtures().marquee);
 
-  const items = page.locator('.ttt-marquee__item');
+  // Excludes clones from the outset: Task 3 duplicates the set to fill the
+  // track, so a bare .ttt-marquee__item count stops meaning "one per logo"
+  // as soon as the script lands.
+  const items = page.locator('.ttt-marquee__item:not([data-ttt-clone])');
   await expect(items).toHaveCount(5);
   await expect(page.locator('.ttt-marquee__image').first()).toHaveAttribute('alt', 'Wide school logo');
 });
@@ -95,4 +98,71 @@ test('leaves a non-full-bleed marquee in the content column', async ({ page }) =
   // is itself alignfull, so the parent is viewport-wide either way and tells
   // you nothing about whether the break-out happened.
   expect(widths.marquee).toBeLessThan(widths.viewport);
+});
+
+test('clones the set to at least twice the viewport, in an even number of copies', async ({ page }) => {
+  await page.goto(fixtures().marquee);
+  await page.waitForFunction(() => document.querySelector('[data-ttt-clone]') !== null);
+
+  const measured = await page.locator('.ttt-marquee').evaluate((root) => {
+    const track = root.querySelector('.ttt-marquee__track');
+    const viewport = root.querySelector('.ttt-marquee__viewport');
+    const originals = track.querySelectorAll('.ttt-marquee__item:not([data-ttt-clone])');
+    const total = track.querySelectorAll('.ttt-marquee__item');
+    return {
+      originals: originals.length,
+      total: total.length,
+      trackWidth: parseFloat(track.style.width),
+      viewportWidth: viewport.clientWidth,
+    };
+  });
+
+  expect(measured.originals).toBe(5);
+  const copies = measured.total / measured.originals;
+  expect(Number.isInteger(copies)).toBe(true);
+  expect(copies % 2).toBe(0);
+  expect(measured.trackWidth).toBeGreaterThanOrEqual(measured.viewportWidth * 2);
+});
+
+test('hides clones from assistive technology', async ({ page }) => {
+  await page.goto(fixtures().marquee);
+  await page.waitForFunction(() => document.querySelector('[data-ttt-clone]') !== null);
+
+  const clones = page.locator('.ttt-marquee__item[data-ttt-clone="1"]');
+  expect(await clones.count()).toBeGreaterThan(0);
+  await expect(clones.first()).toHaveAttribute('aria-hidden', 'true');
+});
+
+test('derives duration from half the track width and the requested speed', async ({ page }) => {
+  await page.goto(fixtures().marquee);
+  await page.waitForFunction(() => document.querySelector('[data-ttt-clone]') !== null);
+
+  const measured = await page.locator('.ttt-marquee').evaluate((root) => {
+    const track = root.querySelector('.ttt-marquee__track');
+    return {
+      duration: parseFloat(getComputedStyle(track).animationDuration),
+      trackWidth: parseFloat(track.style.width),
+      speed: parseFloat(root.dataset.speed),
+    };
+  });
+
+  // The keyframe travels -50%, so only half the track passes per cycle.
+  const expected = measured.trackWidth / 2 / measured.speed;
+  expect(measured.duration).toBeGreaterThan(0);
+  expect(measured.duration).toBeCloseTo(expected, 1);
+});
+
+test('measures the viewport width without the scrollbar', async ({ page }) => {
+  await page.goto(fixtures().marquee);
+  await page.waitForFunction(() => document.querySelector('[data-ttt-clone]') !== null);
+
+  const measured = await page.locator('.ttt-marquee').evaluate((root) => ({
+    varValue: parseFloat(getComputedStyle(root).getPropertyValue('--ttt-vw')),
+    clientWidth: document.documentElement.clientWidth,
+    docScroll: document.documentElement.scrollWidth,
+  }));
+
+  expect(measured.varValue).toBe(measured.clientWidth);
+  // Built on 100vw instead, a full-bleed strip overflows by the scrollbar width.
+  expect(measured.docScroll).toBeLessThanOrEqual(measured.clientWidth + 1);
 });
