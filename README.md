@@ -17,6 +17,28 @@ loose theme, or a page builder.
 | `tests/` | Playwright specs, run against a real WordPress |
 | `plugin-update-checker/` | Vendored PUC v5.7 — committed deliberately, upgraded by swapping the folder |
 
+## Logo Carousel
+
+A full-bleed, continuously scrolling strip of logos. Add it in Elementor from
+the **Top Tier Tutors** category, or with the shortcode:
+
+```
+[toptiertutors_logo_carousel ids="12,13,14" size="full" speed="60"]
+```
+
+| Attribute | Default | Meaning |
+|---|---|---|
+| `ids` | — | Comma-separated attachment IDs, in display order |
+| `size` | `medium` | Registered image size |
+| `speed` | `60` | Pixels per second — constant however many logos there are |
+| `direction` | `left` | `left` or `right` |
+| `pause_on_hover` | `yes` | `no` to keep scrolling under the cursor |
+| `full_bleed` | `yes` | `no` to keep it inside the content column |
+| `height` | CSS default (200px) | Logo height in px |
+| `gap` | CSS default (60px) | Space between logos in px |
+
+Elementor 3.5+ is needed for the widget; the shortcode works without Elementor.
+
 ## Local testing
 
 Tests run against a disposable WordPress the foundation provisions (PHP + SQLite,

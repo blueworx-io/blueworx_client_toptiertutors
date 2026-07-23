@@ -1,0 +1,148 @@
+/*
+ * Top Tier Tutors — logo marquee.
+ *
+ * Motion is CSS only. JavaScript clones the track and sets
+ * --ttt-marquee-duration; everything below works without it, just static.
+ */
+
+.ttt-marquee {
+	--ttt-marquee-height: 200px;
+	--ttt-marquee-gap: 60px;
+	--ttt-marquee-duration: 40s;
+	/* Replaced by JS with the client width, which excludes the scrollbar. */
+	--ttt-vw: 100vw;
+
+	position: relative;
+}
+
+/*
+ * Break out of the content column to the viewport edges. 100vw includes the
+ * scrollbar, which is why --ttt-vw is measured in JS instead.
+ *
+ * max-width: none is required, not tidiness. Block themes cap constrained
+ * layout children with
+ * `.is-layout-constrained > :where(...) { max-width: var(--wp--style--global--content-size) }`,
+ * and max-width beats width no matter how specific the width rule is — without
+ * this the strip silently stays at content width.
+ *
+ * Centring is left/transform rather than negative margins because the same
+ * theme rule sets `margin-left: auto`, and a margin-based break-out has to win
+ * a specificity and load-order fight with it on every theme.
+ */
+.ttt-marquee[data-full-bleed="1"] {
+	width: var(--ttt-vw);
+	max-width: none;
+	margin-left: 0;
+	margin-right: 0;
+	left: 50%;
+	transform: translateX(-50%);
+}
+
+/*
+ * The edge fade, as a mask rather than a gradient overlay: a mask assumes
+ * nothing about the section's background colour, so changing the background
+ * cannot leave two mismatched greys meeting mid-fade.
+ */
+.ttt-marquee__viewport {
+	overflow: hidden;
+	-webkit-mask-image: linear-gradient(
+		to right,
+		transparent 0%,
+		transparent 7.692%,
+		#000 50%,
+		transparent 92.308%,
+		transparent 100%
+	);
+	mask-image: linear-gradient(
+		to right,
+		transparent 0%,
+		transparent 7.692%,
+		#000 50%,
+		transparent 92.308%,
+		transparent 100%
+	);
+}
+
+.ttt-marquee__track {
+	display: flex;
+	align-items: center;
+	width: max-content;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+/*
+ * Gated on data-ttt-ready, which the script sets once it has cloned the track.
+ * Without JS a single set would slide halfway out of view against blank space
+ * and snap back on every cycle; un-cloned, the strip must simply sit still.
+ */
+.ttt-marquee[data-ttt-ready="1"] .ttt-marquee__track {
+	animation: ttt-marquee-scroll var(--ttt-marquee-duration) linear infinite;
+}
+
+.ttt-marquee[data-direction="right"] .ttt-marquee__track {
+	animation-direction: reverse;
+}
+
+/*
+ * The gap is a margin on every item, including the last, rather than flex
+ * `gap`. Flex gap leaves no space after the final tile, so the wrap from the
+ * end of the track back to its start would jump by one gap on every loop.
+ */
+.ttt-marquee__item {
+	flex: 0 0 auto;
+	margin-right: var(--ttt-marquee-gap);
+}
+
+/*
+ * max-width: none is load-bearing. Themes almost universally set
+ * `img { max-width: 100% }`, which would squash the wide logos.
+ */
+.ttt-marquee__image,
+.ttt-marquee__item img {
+	display: block;
+	height: var(--ttt-marquee-height);
+	width: auto;
+	max-width: none;
+}
+
+@keyframes ttt-marquee-scroll {
+	from {
+		transform: translateX(0);
+	}
+
+	to {
+		transform: translateX(-50%);
+	}
+}
+
+/*
+ * focus-within as well as hover: a keyboard user tabbing into the strip needs
+ * it to hold still just as much as a mouse user reading it does.
+ */
+.ttt-marquee[data-pause-on-hover="1"]:hover .ttt-marquee__track,
+.ttt-marquee[data-pause-on-hover="1"]:focus-within .ttt-marquee__track {
+	animation-play-state: paused;
+}
+
+/*
+ * Reduced motion drops the animation entirely. The strip then has to stay
+ * reachable, so the viewport becomes scrollable rather than clipping whatever
+ * does not fit.
+ */
+@media (prefers-reduced-motion: reduce) {
+	.ttt-marquee__track,
+	.ttt-marquee[data-ttt-ready="1"] .ttt-marquee__track {
+		animation: none;
+	}
+
+	.ttt-marquee__viewport {
+		overflow-x: auto;
+
+		/* The mask exists to soften a moving strip. Nothing is moving here, and
+		 * it would hide the very logos the scrollbar exists to reach. */
+		-webkit-mask-image: none;
+		mask-image: none;
+	}
+}
