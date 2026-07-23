@@ -3,7 +3,7 @@
  * Plugin Name:       BlueWorx Labs | Top Tier Tutors
  * Plugin URI:        https://github.com/blueworx-io/blueworx_client_toptiertutors
  * Description:       Top Tier Tutors WordPress plugin.
- * Version:           0.2.1
+ * Version:           0.2.2
  * Requires at least: 6.0
  * Requires PHP:      8.2
  * Author:            Blueworx
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'BLUEWORX_TOPTIERTUTORS_VERSION', '0.2.1' );
+define( 'BLUEWORX_TOPTIERTUTORS_VERSION', '0.2.2' );
 define( 'BLUEWORX_TOPTIERTUTORS_FILE', __FILE__ );
 define( 'BLUEWORX_TOPTIERTUTORS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'BLUEWORX_TOPTIERTUTORS_URL', plugin_dir_url( __FILE__ ) );

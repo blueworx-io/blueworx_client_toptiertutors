@@ -4,6 +4,13 @@ All notable changes to this plugin are documented here. Versions follow semver �
 patch for fixes, minor for features — and every pull request bumps the version
 and adds its entry here (CI enforces both).
 
+## 0.2.2
+
+- The Elementor widget is now listed as "TTT Logo Carousel". Another installed
+  plugin also provides a "Logo Carousel", and two identically named widgets in
+  the panel are easy to confuse. Label only — the widget's internal name is
+  unchanged, so widgets already placed on a page are unaffected.
+
 ## 0.2.1
 
 - Plugin name shown in WordPress is now "BlueWorx Labs | Top Tier Tutors".
