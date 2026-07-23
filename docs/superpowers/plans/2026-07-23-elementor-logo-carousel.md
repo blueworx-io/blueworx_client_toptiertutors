@@ -85,7 +85,10 @@ const fixtures = () => JSON.parse(String(process.env.TTT_FIXTURES));
 test('renders one item per selected logo, with alt text', async ({ page }) => {
   await page.goto(fixtures().marquee);
 
-  const items = page.locator('.ttt-marquee__item');
+  // Excludes clones from the outset: Task 3 duplicates the set to fill the
+  // track, so a bare .ttt-marquee__item count stops meaning "one per logo"
+  // as soon as the script lands.
+  const items = page.locator('.ttt-marquee__item:not([data-ttt-clone])');
   await expect(items).toHaveCount(5);
   await expect(page.locator('.ttt-marquee__image').first()).toHaveAttribute('alt', 'Wide school logo');
 });
