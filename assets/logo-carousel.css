@@ -70,6 +70,14 @@
 	margin: 0;
 	padding: 0;
 	list-style: none;
+}
+
+/*
+ * Gated on data-ttt-ready, which the script sets once it has cloned the track.
+ * Without JS a single set would slide halfway out of view against blank space
+ * and snap back on every cycle; un-cloned, the strip must simply sit still.
+ */
+.ttt-marquee[data-ttt-ready="1"] .ttt-marquee__track {
 	animation: ttt-marquee-scroll var(--ttt-marquee-duration) linear infinite;
 }
 
@@ -124,11 +132,17 @@
  * does not fit.
  */
 @media (prefers-reduced-motion: reduce) {
-	.ttt-marquee__track {
+	.ttt-marquee__track,
+	.ttt-marquee[data-ttt-ready="1"] .ttt-marquee__track {
 		animation: none;
 	}
 
 	.ttt-marquee__viewport {
 		overflow-x: auto;
+
+		/* The mask exists to soften a moving strip. Nothing is moving here, and
+		 * it would hide the very logos the scrollbar exists to reach. */
+		-webkit-mask-image: none;
+		mask-image: none;
 	}
 }

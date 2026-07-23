@@ -61,6 +61,10 @@ class Blueworx_TopTierTutors_Elementor_Integration {
 	 * @return void
 	 */
 	public static function register_category( $elements_manager ) {
+		if ( ! self::is_supported() ) {
+			return;
+		}
+
 		$elements_manager->add_category(
 			self::CATEGORY,
 			array(
@@ -97,11 +101,15 @@ class Blueworx_TopTierTutors_Elementor_Integration {
 	public static function register_editor_bridge() {
 		wp_add_inline_script(
 			Blueworx_TopTierTutors_Plugin::MARQUEE_HANDLE,
-			"jQuery( window ).on( 'elementor/frontend/init', function () {"
-				. "elementorFrontend.hooks.addAction( 'frontend/element_ready/ttt-logo-carousel.default', function ( \$scope ) {"
-					. 'if ( window.tttMarquee ) { window.tttMarquee.initAll( $scope[0] ); }'
+			// Guarded: this handle also loads on shortcode-only pages, where
+			// Elementor never enqueues jQuery and an unguarded call would throw.
+			'if ( window.jQuery ) {'
+				. "jQuery( window ).on( 'elementor/frontend/init', function () {"
+					. "elementorFrontend.hooks.addAction( 'frontend/element_ready/ttt-logo-carousel.default', function ( \$scope ) {"
+						. 'if ( window.tttMarquee ) { window.tttMarquee.initAll( $scope[0] ); }'
+					. '} );'
 				. '} );'
-			. '} );'
+			. '}'
 		);
 	}
 
@@ -115,8 +123,14 @@ class Blueworx_TopTierTutors_Elementor_Integration {
 			return;
 		}
 
+		$screen = get_current_screen();
+
+		if ( ! $screen || 'plugins' !== $screen->id ) {
+			return;
+		}
+
 		printf(
-			'<div class="notice notice-warning"><p>%s</p></div>',
+			'<div class="notice notice-warning is-dismissible"><p>%s</p></div>',
 			esc_html(
 				sprintf(
 					/* translators: %s: minimum supported Elementor version. */

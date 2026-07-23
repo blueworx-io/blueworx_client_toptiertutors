@@ -33,7 +33,6 @@ class Blueworx_TopTierTutors_Marquee_Renderer {
 		'full_bleed'     => true,
 		'height'         => 0,
 		'gap'            => 0,
-		'extra_class'    => '',
 	);
 
 	/**
@@ -77,6 +76,9 @@ class Blueworx_TopTierTutors_Marquee_Renderer {
 			return '';
 		}
 
+		// Only the shortcode uses these: the Elementor widget writes the same two
+		// custom properties through its own responsive controls, which is what
+		// gives it per-breakpoint values.
 		$styles = array();
 
 		if ( absint( $args['height'] ) > 0 ) {
@@ -91,13 +93,27 @@ class Blueworx_TopTierTutors_Marquee_Renderer {
 			'<div class="%1$s" data-ttt-marquee data-speed="%2$d" data-direction="%3$s" data-pause-on-hover="%4$d" data-full-bleed="%5$d"%6$s>' .
 				'<div class="ttt-marquee__viewport"><ul class="ttt-marquee__track" role="list">%7$s</ul></div>' .
 			'</div>',
-			esc_attr( trim( 'ttt-marquee ' . $args['extra_class'] ) ),
-			max( 1, absint( $args['speed'] ) ),
+			esc_attr( 'ttt-marquee' ),
+			self::clamp_speed( $args['speed'] ),
 			'right' === $args['direction'] ? 'right' : 'left',
 			$args['pause_on_hover'] ? 1 : 0,
 			$args['full_bleed'] ? 1 : 0,
 			$styles ? ' style="' . esc_attr( implode( ';', $styles ) ) . '"' : '',
 			$items
 		);
+	}
+
+	/**
+	 * Constrain the scroll speed to something a person can actually look at.
+	 *
+	 * The Elementor slider already caps at 300, but the shortcode accepts any
+	 * integer, and a few thousand pixels per second is a strobe rather than a
+	 * carousel.
+	 *
+	 * @param mixed $speed Requested pixels per second.
+	 * @return int
+	 */
+	private static function clamp_speed( $speed ) {
+		return max( 1, min( 2000, absint( $speed ) ) );
 	}
 }

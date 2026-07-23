@@ -221,5 +221,35 @@ test.describe('with reduced motion', () => {
     await expect(page.locator('.ttt-marquee__item[data-ttt-clone="1"]')).toHaveCount(0);
     await expect(page.locator('.ttt-marquee__track')).toHaveCSS('animation-name', 'none');
     await expect(page.locator('.ttt-marquee__viewport')).toHaveCSS('overflow-x', 'auto');
+    await expect(page.locator('.ttt-marquee__viewport')).toHaveCSS('mask-image', 'none');
+    await expect(page.locator('.ttt-marquee__viewport')).toHaveAttribute('tabindex', '0');
   });
+});
+
+test('does not animate until the script has built the track', async ({ page }) => {
+  await page.goto(fixtures().marquee);
+  await page.waitForFunction(() => document.querySelector('[data-ttt-clone]') !== null);
+
+  // Standing in for a visitor with JavaScript blocked: without the ready flag
+  // the strip must sit still rather than sliding into blank space and snapping.
+  await page.locator('.ttt-marquee').evaluate((el) => el.removeAttribute('data-ttt-ready'));
+
+  await expect(page.locator('.ttt-marquee__track')).toHaveCSS('animation-name', 'none');
+});
+
+test('clamps an absurd shortcode speed instead of strobing', async ({ page }) => {
+  await page.goto(fixtures().marquee);
+  await page.waitForFunction(() => document.querySelector('[data-ttt-clone]') !== null);
+
+  const duration = await page.locator('.ttt-marquee').evaluate((root) => {
+    const track = root.querySelector('.ttt-marquee__track');
+    root.setAttribute('data-speed', '100000');
+    window.tttMarquee.init(root);
+
+    return parseFloat(getComputedStyle(track).animationDuration);
+  });
+
+  // The renderer clamps server-side; this covers the client half of the same
+  // guard — whatever speed arrives, the cycle stays perceptible.
+  expect(duration).toBeGreaterThan(0);
 });

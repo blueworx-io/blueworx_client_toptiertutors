@@ -74,9 +74,15 @@
 		track.style.width = '';
 
 		// Reduced motion never animates, so cloning would only duplicate content.
+		// The viewport scrolls instead, and Safari will not focus a scroll
+		// container unless it is given a tabindex.
 		if (prefersReducedMotion()) {
+			viewport.setAttribute('tabindex', '0');
+
 			return;
 		}
+
+		viewport.removeAttribute('tabindex');
 
 		var originals = [].slice.call(track.children);
 
