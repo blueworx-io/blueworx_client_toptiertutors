@@ -78,7 +78,7 @@ Shortcode atts ─────┘                                        │
 PHP renders the logo set **once**:
 
 ```html
-<div class="ttt-marquee" data-speed="60" data-direction="left" data-pause-on-hover="1" data-full-bleed="1">
+<div class="ttt-marquee" data-ttt-marquee data-speed="60" data-direction="left" data-pause-on-hover="1" data-full-bleed="1">
   <div class="ttt-marquee__viewport">
     <ul class="ttt-marquee__track" role="list">
       <li class="ttt-marquee__item"><img src="…" alt="…" width="…" height="…" loading="lazy"></li>
@@ -105,7 +105,10 @@ nothing is announced twice.
   and stays constant** however many logos are added. Dividing by the full track
   width would run the strip at half the requested speed; a count-based duration
   would instead speed up silently as logos are added.
-- `ResizeObserver` on the viewport recomputes duration and `--ttt-vw`, debounced.
+- `ResizeObserver` on the marquee root recomputes duration and `--ttt-vw`, debounced.
+- The animation is gated on `data-ttt-ready`, which only the script sets. Ungated,
+  a visitor with JavaScript blocked would watch a single un-cloned set slide
+  halfway out of view against blank space and snap back on every cycle.
 - Pause on hover is `animation-play-state: paused`, applied only when the
   control is on.
 - `prefers-reduced-motion: reduce` disables the animation entirely and switches
