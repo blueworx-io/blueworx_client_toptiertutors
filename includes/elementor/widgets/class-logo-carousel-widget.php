@@ -17,7 +17,7 @@ use Elementor\Controls_Manager;
 use Elementor\Widget_Base;
 
 /**
- * Continuous logo marquee.
+ * Stepped, arcing logo carousel.
  */
 class Blueworx_TopTierTutors_Logo_Carousel_Widget extends Widget_Base {
 
@@ -139,22 +139,63 @@ class Blueworx_TopTierTutors_Logo_Carousel_Widget extends Widget_Base {
 		);
 
 		$this->add_control(
-			'speed',
+			'step_ms',
 			array(
-				'label'       => __( 'Speed', 'blueworx-client-toptiertutors' ),
-				'description' => __( 'Pixels per second. Stays constant however many logos you add.', 'blueworx-client-toptiertutors' ),
+				'label'       => __( 'Step duration', 'blueworx-client-toptiertutors' ),
+				'description' => __( 'How long one advance takes, in milliseconds.', 'blueworx-client-toptiertutors' ),
+				'type'        => Controls_Manager::SLIDER,
+				'size_units'  => array( 'ms' ),
+				'range'       => array(
+					'ms' => array(
+						'min'  => 100,
+						'max'  => 3000,
+						'step' => 50,
+					),
+				),
+				'default'     => array(
+					'unit' => 'ms',
+					'size' => 600,
+				),
+			)
+		);
+
+		$this->add_control(
+			'pause_ms',
+			array(
+				'label'       => __( 'Pause', 'blueworx-client-toptiertutors' ),
+				'description' => __( 'Dwell between advances, in milliseconds.', 'blueworx-client-toptiertutors' ),
+				'type'        => Controls_Manager::SLIDER,
+				'size_units'  => array( 'ms' ),
+				'range'       => array(
+					'ms' => array(
+						'min'  => 0,
+						'max'  => 10000,
+						'step' => 100,
+					),
+				),
+				'default'     => array(
+					'unit' => 'ms',
+					'size' => 2000,
+				),
+			)
+		);
+
+		$this->add_control(
+			'arc',
+			array(
+				'label'       => __( 'Arc height', 'blueworx-client-toptiertutors' ),
+				'description' => __( 'Maximum lift in px at the edges. 0 is flat.', 'blueworx-client-toptiertutors' ),
 				'type'        => Controls_Manager::SLIDER,
 				'size_units'  => array( 'px' ),
 				'range'       => array(
 					'px' => array(
-						'min'  => 10,
-						'max'  => 300,
-						'step' => 5,
+						'min' => 0,
+						'max' => 120,
 					),
 				),
 				'default'     => array(
 					'unit' => 'px',
-					'size' => 60,
+					'size' => 24,
 				),
 			)
 		);
@@ -264,14 +305,18 @@ class Blueworx_TopTierTutors_Logo_Carousel_Widget extends Widget_Base {
 			return;
 		}
 
-		$speed = isset( $settings['speed']['size'] ) ? (int) $settings['speed']['size'] : 60;
+		$step_ms  = isset( $settings['step_ms']['size'] ) ? (int) $settings['step_ms']['size'] : 600;
+		$pause_ms = isset( $settings['pause_ms']['size'] ) ? (int) $settings['pause_ms']['size'] : 2000;
+		$arc      = isset( $settings['arc']['size'] ) ? (int) $settings['arc']['size'] : 24;
 
 		// Renderer output is already escaped attribute by attribute.
 		echo Blueworx_TopTierTutors_Marquee_Renderer::render( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 			array(
 				'ids'            => $ids,
 				'image_size'     => $settings['image_size'],
-				'speed'          => $speed,
+				'step_ms'        => $step_ms,
+				'pause_ms'       => $pause_ms,
+				'arc'            => $arc,
 				'direction'      => $settings['direction'],
 				'pause_on_hover' => 'yes' === $settings['pause_on_hover'],
 				'full_bleed'     => 'yes' === $settings['full_bleed'],

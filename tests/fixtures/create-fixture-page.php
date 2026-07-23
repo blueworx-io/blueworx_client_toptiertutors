@@ -150,18 +150,43 @@ $narrow = ttt_fixture_image( 'logo-narrow.png', 'Narrow school logo', 146, 200 )
 $marquee_ids = implode( ',', array( $wide, $narrow, $wide, $narrow, $wide ) );
 
 $fixtures = array(
-	'shortcode'    => ttt_fixture_page( 'ttt-shortcode-smoke', 'TTT shortcode smoke', '[toptiertutors]' ),
-	'marquee'      => ttt_fixture_page(
+	'shortcode'        => ttt_fixture_page( 'ttt-shortcode-smoke', 'TTT shortcode smoke', '[toptiertutors]' ),
+	// Defaults left implicit (step_ms/pause_ms/arc unset) so structural tests
+	// double as coverage that the renderer's defaults reach the markup. The
+	// 2s default pause is ample headroom for a synchronous assertion.
+	'marquee'          => ttt_fixture_page(
 		'ttt-marquee',
 		'TTT marquee',
-		'[toptiertutors_logo_carousel ids="' . $marquee_ids . '" size="full" speed="60"]'
+		'[toptiertutors_logo_carousel ids="' . $marquee_ids . '" size="full"]'
 	),
-	'marqueePlain' => ttt_fixture_page(
+	'marqueePlain'     => ttt_fixture_page(
 		'ttt-marquee-plain',
 		'TTT marquee plain',
-		'[toptiertutors_logo_carousel ids="' . $wide . ',' . $narrow . '" size="full" speed="120" pause_on_hover="no" full_bleed="no"]'
+		'[toptiertutors_logo_carousel ids="' . $wide . ',' . $narrow . '" size="full" step_ms="120" pause_ms="200" pause_on_hover="no" full_bleed="no"]'
 	),
-	'logoIds'      => array( $wide, $narrow ),
+	// Short timings so the stepping/dwell/hover specs do not sit around
+	// waiting on real-world durations.
+	'marqueeStep'      => ttt_fixture_page(
+		'ttt-marquee-step',
+		'TTT marquee step',
+		'[toptiertutors_logo_carousel ids="' . $marquee_ids . '" size="full" step_ms="120" pause_ms="300"]'
+	),
+	'marqueeStepRight' => ttt_fixture_page(
+		'ttt-marquee-step-right',
+		'TTT marquee step right',
+		'[toptiertutors_logo_carousel ids="' . $marquee_ids . '" size="full" step_ms="120" pause_ms="300" direction="right"]'
+	),
+	'marqueeArc'       => ttt_fixture_page(
+		'ttt-marquee-arc',
+		'TTT marquee arc',
+		'[toptiertutors_logo_carousel ids="' . $marquee_ids . '" size="full" arc="24"]'
+	),
+	'marqueeArcZero'   => ttt_fixture_page(
+		'ttt-marquee-arc-zero',
+		'TTT marquee arc zero',
+		'[toptiertutors_logo_carousel ids="' . $marquee_ids . '" size="full" arc="0"]'
+	),
+	'logoIds'          => array( $wide, $narrow ),
 );
 
 echo wp_json_encode( $fixtures );

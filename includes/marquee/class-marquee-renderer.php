@@ -27,7 +27,9 @@ class Blueworx_TopTierTutors_Marquee_Renderer {
 	const DEFAULTS = array(
 		'ids'            => array(),
 		'image_size'     => 'medium',
-		'speed'          => 60,
+		'step_ms'        => 600,
+		'pause_ms'       => 2000,
+		'arc'            => 24,
 		'direction'      => 'left',
 		'pause_on_hover' => true,
 		'full_bleed'     => true,
@@ -90,30 +92,18 @@ class Blueworx_TopTierTutors_Marquee_Renderer {
 		}
 
 		return sprintf(
-			'<div class="%1$s" data-ttt-marquee data-speed="%2$d" data-direction="%3$s" data-pause-on-hover="%4$d" data-full-bleed="%5$d"%6$s>' .
-				'<div class="ttt-marquee__viewport"><ul class="ttt-marquee__track" role="list">%7$s</ul></div>' .
+			'<div class="%1$s" data-ttt-marquee data-step-ms="%2$d" data-pause-ms="%3$d" data-arc="%4$d" data-direction="%5$s" data-pause-on-hover="%6$d" data-full-bleed="%7$d"%8$s>' .
+				'<div class="ttt-marquee__viewport"><ul class="ttt-marquee__track" role="list">%9$s</ul></div>' .
 			'</div>',
 			esc_attr( 'ttt-marquee' ),
-			self::clamp_speed( $args['speed'] ),
+			absint( $args['step_ms'] ),
+			absint( $args['pause_ms'] ),
+			absint( $args['arc'] ),
 			'right' === $args['direction'] ? 'right' : 'left',
 			$args['pause_on_hover'] ? 1 : 0,
 			$args['full_bleed'] ? 1 : 0,
 			$styles ? ' style="' . esc_attr( implode( ';', $styles ) ) . '"' : '',
 			$items
 		);
-	}
-
-	/**
-	 * Constrain the scroll speed to something a person can actually look at.
-	 *
-	 * The Elementor slider already caps at 300, but the shortcode accepts any
-	 * integer, and a few thousand pixels per second is a strobe rather than a
-	 * carousel.
-	 *
-	 * @param mixed $speed Requested pixels per second.
-	 * @return int
-	 */
-	private static function clamp_speed( $speed ) {
-		return max( 1, min( 2000, absint( $speed ) ) );
 	}
 }

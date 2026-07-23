@@ -19,20 +19,24 @@ loose theme, or a page builder.
 
 ## Logo Carousel
 
-A full-bleed, continuously scrolling strip of logos. Add it in Elementor from
-the **Top Tier Tutors** category, or with the shortcode:
+A full-bleed strip of logos that steps sideways one tile at a time, pausing to
+dwell between steps, with items lifting toward the top as they move away from
+centre. Add it in Elementor from the **Top Tier Tutors** category, or with the
+shortcode:
 
 ```
-[toptiertutors_logo_carousel ids="12,13,14" size="full" speed="60"]
+[toptiertutors_logo_carousel ids="12,13,14" size="full" step_ms="600" pause_ms="2000" arc="24"]
 ```
 
 | Attribute | Default | Meaning |
 |---|---|---|
 | `ids` | — | Comma-separated attachment IDs, in display order |
 | `size` | `medium` | Registered image size |
-| `speed` | `60` | Pixels per second — constant however many logos there are |
+| `step_ms` | `600` | How long one advance takes, in milliseconds |
+| `pause_ms` | `2000` | Dwell between advances, in milliseconds |
+| `arc` | `24` | Maximum lift in px at the edges; `0` is flat |
 | `direction` | `left` | `left` or `right` |
-| `pause_on_hover` | `yes` | `no` to keep scrolling under the cursor |
+| `pause_on_hover` | `yes` | `no` to keep stepping under the cursor |
 | `full_bleed` | `yes` | `no` to keep it inside the content column |
 | `height` | CSS default (200px) | Logo height in px |
 | `gap` | CSS default (60px) | Space between logos in px |

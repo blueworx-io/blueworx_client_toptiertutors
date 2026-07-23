@@ -6,9 +6,9 @@ const fixtures = () => JSON.parse(String(process.env.TTT_FIXTURES));
 test('renders one item per selected logo, with alt text', async ({ page }) => {
   await page.goto(fixtures().marquee);
 
-  // Excludes clones from the outset: Task 3 duplicates the set to fill the
-  // track, so a bare .ttt-marquee__item count stops meaning "one per logo"
-  // as soon as the script lands.
+  // Excludes clones from the outset: the script duplicates the set to fill
+  // the track, so a bare .ttt-marquee__item count stops meaning "one per
+  // logo" as soon as it lands.
   const items = page.locator('.ttt-marquee__item:not([data-ttt-clone])');
   await expect(items).toHaveCount(5);
   await expect(page.locator('.ttt-marquee__image').first()).toHaveAttribute('alt', 'Wide school logo');
@@ -17,8 +17,12 @@ test('renders one item per selected logo, with alt text', async ({ page }) => {
 test('carries its settings as data attributes', async ({ page }) => {
   await page.goto(fixtures().marquee);
 
+  // The shortcode leaves step_ms/pause_ms/arc unset, so this also covers the
+  // renderer's own defaults reaching the markup.
   const root = page.locator('.ttt-marquee');
-  await expect(root).toHaveAttribute('data-speed', '60');
+  await expect(root).toHaveAttribute('data-step-ms', '600');
+  await expect(root).toHaveAttribute('data-pause-ms', '2000');
+  await expect(root).toHaveAttribute('data-arc', '24');
   await expect(root).toHaveAttribute('data-direction', 'left');
   await expect(root).toHaveAttribute('data-pause-on-hover', '1');
   await expect(root).toHaveAttribute('data-full-bleed', '1');
@@ -82,7 +86,7 @@ test('breaks out of the content column to the viewport width', async ({ page }) 
   }));
 
   // At least, rather than exactly: the CSS fallback is 100vw, which includes
-  // the scrollbar. Task 3 measures the true client width and tightens this.
+  // the scrollbar, before JS tightens it via --ttt-vw.
   expect(widths.marquee).toBeGreaterThanOrEqual(widths.viewport - 1);
 });
 
@@ -100,7 +104,7 @@ test('leaves a non-full-bleed marquee in the content column', async ({ page }) =
   expect(widths.marquee).toBeLessThan(widths.viewport);
 });
 
-test('clones the set to at least twice the viewport, in an even number of copies', async ({ page }) => {
+test('clones the set to at least twice the viewport', async ({ page }) => {
   await page.goto(fixtures().marquee);
   await page.waitForFunction(() => document.querySelector('[data-ttt-clone]') !== null);
 
@@ -112,15 +116,16 @@ test('clones the set to at least twice the viewport, in an even number of copies
     return {
       originals: originals.length,
       total: total.length,
-      trackWidth: parseFloat(track.style.width),
+      // Real rotation recycles tiles rather than shifting a percentage, so —
+      // unlike the old marquee — there is no need for an even copy count.
+      trackWidth: track.getBoundingClientRect().width,
       viewportWidth: viewport.clientWidth,
     };
   });
 
   expect(measured.originals).toBe(5);
-  const copies = measured.total / measured.originals;
-  expect(Number.isInteger(copies)).toBe(true);
-  expect(copies % 2).toBe(0);
+  expect(measured.total).toBeGreaterThan(measured.originals);
+  expect(measured.total % measured.originals).toBe(0);
   expect(measured.trackWidth).toBeGreaterThanOrEqual(measured.viewportWidth * 2);
 });
 
@@ -131,25 +136,6 @@ test('hides clones from assistive technology', async ({ page }) => {
   const clones = page.locator('.ttt-marquee__item[data-ttt-clone="1"]');
   expect(await clones.count()).toBeGreaterThan(0);
   await expect(clones.first()).toHaveAttribute('aria-hidden', 'true');
-});
-
-test('derives duration from half the track width and the requested speed', async ({ page }) => {
-  await page.goto(fixtures().marquee);
-  await page.waitForFunction(() => document.querySelector('[data-ttt-clone]') !== null);
-
-  const measured = await page.locator('.ttt-marquee').evaluate((root) => {
-    const track = root.querySelector('.ttt-marquee__track');
-    return {
-      duration: parseFloat(getComputedStyle(track).animationDuration),
-      trackWidth: parseFloat(track.style.width),
-      speed: parseFloat(root.dataset.speed),
-    };
-  });
-
-  // The keyframe travels -50%, so only half the track passes per cycle.
-  const expected = measured.trackWidth / 2 / measured.speed;
-  expect(measured.duration).toBeGreaterThan(0);
-  expect(measured.duration).toBeCloseTo(expected, 1);
 });
 
 test('measures the viewport width without the scrollbar', async ({ page }) => {
@@ -171,43 +157,167 @@ test('re-initialising an existing marquee relayouts rather than no-opping', asyn
   await page.goto(fixtures().marquee);
   await page.waitForFunction(() => document.querySelector('[data-ttt-clone]') !== null);
 
-  const durations = await page.locator('.ttt-marquee').evaluate((root) => {
+  const counts = await page.locator('.ttt-marquee').evaluate((root) => {
     const track = root.querySelector('.ttt-marquee__track');
-    const before = parseFloat(getComputedStyle(track).animationDuration);
+    const viewport = root.querySelector('.ttt-marquee__viewport');
+    const before = track.querySelectorAll('.ttt-marquee__item').length;
 
-    root.setAttribute('data-speed', '30');
+    // Force the viewport far wider than the page really is. A no-op init()
+    // would leave the clone count exactly where it was.
+    viewport.style.width = '8000px';
     window.tttMarquee.init(root);
 
-    return { before, after: parseFloat(getComputedStyle(track).animationDuration) };
+    return { before, after: track.querySelectorAll('.ttt-marquee__item').length };
   });
 
-  // Task 5 re-inits a widget the Elementor editor redrew. Halving the speed has
-  // to double the time taken to cover the same track, or that call did nothing.
-  expect(durations.before).toBeGreaterThan(0);
-  expect(durations.after).toBeCloseTo(durations.before * 2, 1);
+  // Covering an 8000px viewport twice over takes many more copies than the
+  // original layout did; init() must have re-cloned rather than doing
+  // nothing to a track it had already marked ready.
+  expect(counts.after).toBeGreaterThan(counts.before);
 });
 
-test('pauses on hover when asked to', async ({ page }) => {
-  await page.goto(fixtures().marquee);
-  await page.waitForFunction(() => document.querySelector('[data-ttt-clone]') !== null);
+test('after one step, the item that was leading moves to the end of the track', async ({ page }) => {
+  await page.goto(fixtures().marqueeStep);
 
   const track = page.locator('.ttt-marquee__track');
-  await expect(track).toHaveCSS('animation-play-state', 'running');
+  await track.evaluate((el) => {
+    window.__tttLeading = el.firstElementChild;
+  });
 
-  await page.locator('.ttt-marquee').hover();
-  await expect(track).toHaveCSS('animation-play-state', 'paused');
+  await page.waitForFunction(() => {
+    const el = document.querySelector('.ttt-marquee__track');
+    return el.lastElementChild === window.__tttLeading;
+  });
+
+  const untouched = await track.evaluate((el) => el.contains(window.__tttLeading));
+  expect(untouched).toBe(true);
 });
 
-test('keeps running on hover when pause on hover is off', async ({ page }) => {
+test('direction="right" moves the trailing item to the front instead', async ({ page }) => {
+  await page.goto(fixtures().marqueeStepRight);
+
+  const track = page.locator('.ttt-marquee__track');
+  await track.evaluate((el) => {
+    window.__tttTrailing = el.lastElementChild;
+  });
+
+  await page.waitForFunction(() => {
+    const el = document.querySelector('.ttt-marquee__track');
+    return el.firstElementChild === window.__tttTrailing;
+  });
+
+  const untouched = await track.evaluate((el) => el.contains(window.__tttTrailing));
+  expect(untouched).toBe(true);
+});
+
+test('the order does not change during the dwell', async ({ page }) => {
+  // step_ms="120" pause_ms="300" — long enough to sample twice with margin
+  // either side, short enough the test stays quick.
+  await page.goto(fixtures().marqueeStep);
+
+  const track = page.locator('.ttt-marquee__track');
+  await track.evaluate((el) => {
+    window.__tttDwell = el.firstElementChild;
+  });
+
+  await page.waitForTimeout(150);
+  await expect
+    .poll(() => track.evaluate((el) => el.firstElementChild === window.__tttDwell))
+    .toBe(true);
+
+  await page.waitForTimeout(100);
+  await expect
+    .poll(() => track.evaluate((el) => el.firstElementChild === window.__tttDwell))
+    .toBe(true);
+});
+
+test('hovering prevents the next step', async ({ page }) => {
+  await page.goto(fixtures().marqueeStep);
+  await page.locator('.ttt-marquee').hover();
+
+  const track = page.locator('.ttt-marquee__track');
+  await track.evaluate((el) => {
+    window.__tttHoverStash = el.firstElementChild;
+  });
+
+  // stepMs (120) + pauseMs (300) + margin: well past one full cycle would
+  // otherwise take.
+  await page.waitForTimeout(120 + 300 + 200);
+
+  const unchanged = await track.evaluate((el) => el.firstElementChild === window.__tttHoverStash);
+  expect(unchanged).toBe(true);
+});
+
+test('does not pause on hover when pause_on_hover is off', async ({ page }) => {
   await page.goto(fixtures().marqueePlain);
+  await page.locator('.ttt-marquee').hover();
+
+  const track = page.locator('.ttt-marquee__track');
+  await track.evaluate((el) => {
+    window.__tttHoverOffStash = el.firstElementChild;
+  });
+
+  await page.waitForFunction(() => {
+    const el = document.querySelector('.ttt-marquee__track');
+    return el.firstElementChild !== window.__tttHoverOffStash;
+  });
+});
+
+test('lifts items away from centre when arc is set', async ({ page }) => {
+  await page.goto(fixtures().marqueeArc);
   await page.waitForFunction(() => document.querySelector('[data-ttt-clone]') !== null);
 
-  await page.locator('.ttt-marquee').hover();
-  await expect(page.locator('.ttt-marquee__track')).toHaveCSS('animation-play-state', 'running');
+  const measured = await page.locator('.ttt-marquee').evaluate((root) => {
+    const viewport = root.querySelector('.ttt-marquee__viewport');
+    const items = Array.from(root.querySelectorAll('.ttt-marquee__item'));
+    const vRect = viewport.getBoundingClientRect();
+    const vCenter = vRect.left + vRect.width / 2;
+
+    const translateY = (el) => {
+      const t = getComputedStyle(el).transform;
+      if (t === 'none') {
+        return 0;
+      }
+      return new DOMMatrixReadOnly(t).m42;
+    };
+
+    let nearest = null;
+    let farthest = null;
+
+    items.forEach((item) => {
+      const rect = item.getBoundingClientRect();
+      const dist = Math.abs(rect.left + rect.width / 2 - vCenter);
+      const entry = { dist: dist, ty: translateY(item) };
+
+      if (!nearest || dist < nearest.dist) {
+        nearest = entry;
+      }
+      if (!farthest || dist > farthest.dist) {
+        farthest = entry;
+      }
+    });
+
+    return { nearestTy: nearest.ty, farthestTy: farthest.ty };
+  });
+
+  expect(Math.abs(measured.nearestTy)).toBeLessThanOrEqual(1);
+  expect(measured.farthestTy).toBeLessThan(measured.nearestTy - 1);
+});
+
+test('arc="0" applies no vertical offset to any item', async ({ page }) => {
+  await page.goto(fixtures().marqueeArcZero);
+  await page.waitForFunction(() => document.querySelector('[data-ttt-clone]') !== null);
+
+  const transforms = await page.locator('.ttt-marquee').evaluate((root) =>
+    Array.from(root.querySelectorAll('.ttt-marquee__item')).map((item) => getComputedStyle(item).transform)
+  );
+
+  expect(transforms.length).toBeGreaterThan(0);
+  transforms.forEach((t) => expect(t).toBe('none'));
 });
 
 test.describe('with reduced motion', () => {
-  test('does not animate, clone, or trap the logos out of reach', async ({ page }) => {
+  test('does not step, clone, or trap the logos out of reach', async ({ page }) => {
     // Set explicitly rather than through test.use({ reducedMotion: 'reduce' }):
     // on Playwright 1.61.1 that fixture does not reach the browser context with
     // this config, so the media query stays false and the specs below would be
@@ -219,37 +329,12 @@ test.describe('with reduced motion', () => {
     await page.waitForFunction(() => document.querySelector('[data-ttt-ready="1"]') !== null);
 
     await expect(page.locator('.ttt-marquee__item[data-ttt-clone="1"]')).toHaveCount(0);
-    await expect(page.locator('.ttt-marquee__track')).toHaveCSS('animation-name', 'none');
+
+    const transform = await page.locator('.ttt-marquee__track').evaluate((el) => getComputedStyle(el).transform);
+    expect(transform).toBe('none');
+
     await expect(page.locator('.ttt-marquee__viewport')).toHaveCSS('overflow-x', 'auto');
     await expect(page.locator('.ttt-marquee__viewport')).toHaveCSS('mask-image', 'none');
     await expect(page.locator('.ttt-marquee__viewport')).toHaveAttribute('tabindex', '0');
   });
-});
-
-test('does not animate until the script has built the track', async ({ page }) => {
-  await page.goto(fixtures().marquee);
-  await page.waitForFunction(() => document.querySelector('[data-ttt-clone]') !== null);
-
-  // Standing in for a visitor with JavaScript blocked: without the ready flag
-  // the strip must sit still rather than sliding into blank space and snapping.
-  await page.locator('.ttt-marquee').evaluate((el) => el.removeAttribute('data-ttt-ready'));
-
-  await expect(page.locator('.ttt-marquee__track')).toHaveCSS('animation-name', 'none');
-});
-
-test('clamps an absurd shortcode speed instead of strobing', async ({ page }) => {
-  await page.goto(fixtures().marquee);
-  await page.waitForFunction(() => document.querySelector('[data-ttt-clone]') !== null);
-
-  const duration = await page.locator('.ttt-marquee').evaluate((root) => {
-    const track = root.querySelector('.ttt-marquee__track');
-    root.setAttribute('data-speed', '100000');
-    window.tttMarquee.init(root);
-
-    return parseFloat(getComputedStyle(track).animationDuration);
-  });
-
-  // The renderer clamps server-side; this covers the client half of the same
-  // guard — whatever speed arrives, the cycle stays perceptible.
-  expect(duration).toBeGreaterThan(0);
 });
