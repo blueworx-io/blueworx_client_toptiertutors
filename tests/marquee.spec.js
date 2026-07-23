@@ -166,3 +166,23 @@ test('measures the viewport width without the scrollbar', async ({ page }) => {
   // Built on 100vw instead, a full-bleed strip overflows by the scrollbar width.
   expect(measured.docScroll).toBeLessThanOrEqual(measured.clientWidth + 1);
 });
+
+test('re-initialising an existing marquee relayouts rather than no-opping', async ({ page }) => {
+  await page.goto(fixtures().marquee);
+  await page.waitForFunction(() => document.querySelector('[data-ttt-clone]') !== null);
+
+  const durations = await page.locator('.ttt-marquee').evaluate((root) => {
+    const track = root.querySelector('.ttt-marquee__track');
+    const before = parseFloat(getComputedStyle(track).animationDuration);
+
+    root.setAttribute('data-speed', '30');
+    window.tttMarquee.init(root);
+
+    return { before, after: parseFloat(getComputedStyle(track).animationDuration) };
+  });
+
+  // Task 5 re-inits a widget the Elementor editor redrew. Halving the speed has
+  // to double the time taken to cover the same track, or that call did nothing.
+  expect(durations.before).toBeGreaterThan(0);
+  expect(durations.after).toBeCloseTo(durations.before * 2, 1);
+});

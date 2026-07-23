@@ -131,39 +131,44 @@
 	 * @return {void}
 	 */
 	function init(root) {
-		if (!root || root.getAttribute('data-ttt-ready') === '1') {
+		if (!root) {
 			return;
 		}
 
-		root.setAttribute('data-ttt-ready', '1');
+		// Listeners attach once, but the layout always re-runs. A second init()
+		// — the Elementor editor redrawing a widget in place — must reflect
+		// whatever changed rather than silently doing nothing.
+		if (root.getAttribute('data-ttt-ready') !== '1') {
+			root.setAttribute('data-ttt-ready', '1');
 
-		var relayout = function () {
-			layout(root);
-		};
+			var relayout = function () {
+				layout(root);
+			};
 
-		// Images have no measurable width until they load.
-		var images = root.querySelectorAll('img');
+			// Images have no measurable width until they load.
+			var images = root.querySelectorAll('img');
 
-		for (var i = 0; i < images.length; i++) {
-			if (!images[i].complete) {
-				images[i].addEventListener('load', relayout);
-				images[i].addEventListener('error', relayout);
-			}
-		}
-
-		if (typeof window.ResizeObserver === 'function') {
-			var frame = null;
-			var observer = new window.ResizeObserver(function () {
-				if (frame) {
-					window.cancelAnimationFrame(frame);
+			for (var i = 0; i < images.length; i++) {
+				if (!images[i].complete) {
+					images[i].addEventListener('load', relayout);
+					images[i].addEventListener('error', relayout);
 				}
+			}
 
-				frame = window.requestAnimationFrame(relayout);
-			});
+			if (typeof window.ResizeObserver === 'function') {
+				var frame = null;
+				var observer = new window.ResizeObserver(function () {
+					if (frame) {
+						window.cancelAnimationFrame(frame);
+					}
 
-			observer.observe(root);
-		} else {
-			window.addEventListener('resize', relayout);
+					frame = window.requestAnimationFrame(relayout);
+				});
+
+				observer.observe(root);
+			} else {
+				window.addEventListener('resize', relayout);
+			}
 		}
 
 		layout(root);
