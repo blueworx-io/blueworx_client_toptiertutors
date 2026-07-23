@@ -18,11 +18,24 @@
 /*
  * Break out of the content column to the viewport edges. 100vw includes the
  * scrollbar, which is why --ttt-vw is measured in JS instead.
+ *
+ * max-width: none is required, not tidiness. Block themes cap constrained
+ * layout children with
+ * `.is-layout-constrained > :where(...) { max-width: var(--wp--style--global--content-size) }`,
+ * and max-width beats width no matter how specific the width rule is — without
+ * this the strip silently stays at content width.
+ *
+ * Centring is left/transform rather than negative margins because the same
+ * theme rule sets `margin-left: auto`, and a margin-based break-out has to win
+ * a specificity and load-order fight with it on every theme.
  */
 .ttt-marquee[data-full-bleed="1"] {
 	width: var(--ttt-vw);
-	margin-left: calc(50% - var(--ttt-vw) / 2);
-	margin-right: calc(50% - var(--ttt-vw) / 2);
+	max-width: none;
+	margin-left: 0;
+	margin-right: 0;
+	left: 50%;
+	transform: translateX(-50%);
 }
 
 /*
