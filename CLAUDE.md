@@ -142,6 +142,7 @@ Meaningful alt text, real form labels, readable contrast, full keyboard access, 
 
 - **Slug:** `blueworx-client-toptiertutors` — the plugin folder name, the string in `buildUpdateChecker()`, and the `plugin_slug` CI input. All three must agree.
 - **Status:** scaffold. `[toptiertutors]` renders a placeholder wrapper (`.ttt-root`); feature code goes in `includes/`, registered from `class-plugin.php`.
+- **Elementor:** the widget in `includes/elementor/` is a thin adapter over `Blueworx_TopTierTutors_Marquee_Renderer`. Keep it that way — the renderer, shortcode, CSS and JS stay Elementor-free so the Playwright suite can drive them in a harness that has no Elementor.
 - **Testing:** `npm run wp:up` boots the foundation's disposable WordPress on `http://127.0.0.1:8881` (expects `bluegroup_core_foundation` cloned alongside this repo), then `WP_ADMIN_USER=admin WP_ADMIN_PASS=wptest-admin-pw npx playwright test`. `npm run wp:down` tears it down.
 - **Releases:** auto-update via GitHub Releases with the vendored Plugin Update Checker. Each site needs `BLUEWORX_PLUGIN_UPDATE_TOKEN` in `wp-config.php` — the repo is private.
 - **`plugin-update-checker/` is vendored on purpose.** Don't lint, reformat, or refactor it; upgrade by swapping the folder for a newer tag.
