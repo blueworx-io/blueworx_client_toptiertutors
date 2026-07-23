@@ -132,7 +132,7 @@ All from Elementor's free tier; Elementor Pro is not required.
 **Content**
 
 - Images — `Controls_Manager::GALLERY`
-- Image size — `Group_Control_Image_Size`, default `medium`
+- Image size — `Controls_Manager::SELECT` over `get_intermediate_image_sizes()` plus `full`, default `medium`. Not `Group_Control_Image_Size`: that control also emits custom dimensions and cropping, which would put resizing logic in the renderer for no gain here
 - Direction — select, left (default) / right
 - Speed — slider, px per second, default `60`, range 10–300
 - Pause on hover — switcher, default on

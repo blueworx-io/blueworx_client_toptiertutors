@@ -28,6 +28,7 @@ define( 'BLUEWORX_TOPTIERTUTORS_URL', plugin_dir_url( __FILE__ ) );
 
 require_once BLUEWORX_TOPTIERTUTORS_DIR . 'includes/marquee/class-marquee-renderer.php';
 require_once BLUEWORX_TOPTIERTUTORS_DIR . 'includes/marquee/class-marquee-shortcode.php';
+require_once BLUEWORX_TOPTIERTUTORS_DIR . 'includes/elementor/class-elementor-integration.php';
 require_once BLUEWORX_TOPTIERTUTORS_DIR . 'includes/class-plugin.php';
 
 Blueworx_TopTierTutors_Plugin::register();

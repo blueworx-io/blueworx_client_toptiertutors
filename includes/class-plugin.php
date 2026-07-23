@@ -37,6 +37,7 @@ class Blueworx_TopTierTutors_Plugin {
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
 
 		Blueworx_TopTierTutors_Marquee_Shortcode::register();
+		Blueworx_TopTierTutors_Elementor_Integration::register();
 	}
 
 	/**
