@@ -4,6 +4,23 @@ All notable changes to this plugin are documented here. Versions follow semver �
 patch for fixes, minor for features — and every pull request bumps the version
 and adds its entry here (CI enforces both).
 
+## 0.3.0
+
+- Logo carousel motion replaced: continuous marquee drift is gone, at the
+  client's request, in favour of a step / pause / step model — the strip
+  advances by one item's width, holds for a dwell, and repeats. `speed` is
+  replaced by `step_ms` (default `600`) and `pause_ms` (default `2000`) in the
+  renderer, shortcode and Elementor widget alike.
+- New `arc` setting (default `24`, `0` for flat): items lift toward the top as
+  they move away from the strip's centre, animating together with the step
+  rather than afterwards. This is an addition beyond the original Figma, which
+  has all tiles flat.
+- Pause on hover and keyboard focus, reduced-motion behaviour and clone-based
+  looping are unchanged in effect, now driven by JavaScript transitions
+  instead of a CSS keyframe. The even-clone-count rule no longer applies —
+  any count covering the viewport twice over is fine, since items really
+  rotate rather than a track shifting by a fixed percentage.
+
 ## 0.2.2
 
 - The Elementor widget is now listed as "TTT Logo Carousel". Another installed

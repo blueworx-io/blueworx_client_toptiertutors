@@ -78,7 +78,7 @@ Shortcode atts ─────┘                                        │
 PHP renders the logo set **once**:
 
 ```html
-<div class="ttt-marquee" data-ttt-marquee data-speed="60" data-direction="left" data-pause-on-hover="1" data-full-bleed="1">
+<div class="ttt-marquee" data-ttt-marquee data-step-ms="600" data-pause-ms="2000" data-arc="24" data-direction="left" data-pause-on-hover="1" data-full-bleed="1">
   <div class="ttt-marquee__viewport">
     <ul class="ttt-marquee__track" role="list">
       <li class="ttt-marquee__item"><img src="…" alt="…" width="…" height="…" loading="lazy"></li>
@@ -89,31 +89,55 @@ PHP renders the logo set **once**:
 ```
 
 JS then clones the whole logo set until the track is at least twice the viewport
-width **and holds an even number of copies**, so a three-logo strip loops as
-seamlessly as a twenty-logo one. The even count is what makes a `-50%` shift land
-exactly on a copy boundary. Clones carry `aria-hidden="true"`, and any focusable
-content inside a clone gets `tabindex="-1"`.
+width, so a three-logo strip rotates as seamlessly as a twenty-logo one. Real
+rotation recycles tiles rather than shifting a track by a fixed percentage, so
+— unlike the original marquee — there is no need for an even copy count.
+Clones carry `aria-hidden="true"`, and any focusable content inside a clone
+gets `tabindex="-1"`.
 
 Without JS the strip renders as a static row of logos. Nothing disappears and
 nothing is announced twice.
 
 ## Motion
 
-- One keyframe: `translateX(0)` → `translateX(-50%)`, `linear`, `infinite`.
-- The animation travels half the track, so the duration is
-  `--ttt-marquee-duration: (trackWidth ÷ 2) ÷ speed` seconds — **speed is px/sec
-  and stays constant** however many logos are added. Dividing by the full track
-  width would run the strip at half the requested speed; a count-based duration
-  would instead speed up silently as logos are added.
-- `ResizeObserver` on the marquee root recomputes duration and `--ttt-vw`, debounced.
-- The animation is gated on `data-ttt-ready`, which only the script sets. Ungated,
-  a visitor with JavaScript blocked would watch a single un-cloned set slide
-  halfway out of view against blank space and snap back on every cycle.
-- Pause on hover is `animation-play-state: paused`, applied only when the
-  control is on.
-- `prefers-reduced-motion: reduce` disables the animation entirely and switches
-  the viewport to `overflow-x: auto` so every logo stays reachable by scroll and
-  keyboard.
+**Updated 2026-07-23 (stepped rotation and arc):** the client asked for paged
+motion — items rotate in, pause, then rotate again — in place of the
+continuous marquee this section originally described. That request supersedes
+the earlier "continuous drift" decision above; the off-canvas bleed and edge
+fade still apply; the mechanism for how the strip moves does not. The vertical
+arc described below is a further addition of the client's, not something
+present in the Figma — the Figma node has all five tiles at `y=39` with
+identical heights, dead flat.
+
+- Motion is entirely JavaScript. Nothing animates via CSS any more: no
+  keyframe, no `animation` declaration, no `--ttt-marquee-duration`.
+- One **step** advances the track by the width of the leading item plus its
+  gap (`stepPx`), transitioning `translateX` over `step_ms`. On
+  `transitionend` the leading item is recycled to the end, transitions are
+  turned off, the track is reset to `translateX(0)`, a reflow is forced, and
+  transitions are turned back on — real rotation, so nothing ever runs out.
+  `direction="right"` mirrors this: the trailing item moves to the front and
+  the track starts offset by `-lastWidth`, transitioning to `0`.
+- Between steps the strip holds for `pause_ms` before the next step.
+- The **arc**: each item's own `translateY` lifts it toward the top as it
+  moves away from the strip's horizontal centre. `d` is the distance from the
+  viewport's centre to the item's centre, divided by half the viewport width,
+  clamped to `1`; lift is `arc * d²` (squared so the centre stays flat and the
+  rise gathers toward the edges). `arc: 0` is flat. The item's target arc for
+  its position **after** the slide is set before the slide starts, so the lift
+  animates together with the step instead of lurching afterwards. Items keep
+  their own transform; the track keeps its own — they compose without
+  fighting because they are different elements.
+- `ResizeObserver` on the marquee root still recomputes `--ttt-vw` and
+  re-clones, debounced.
+- Pause on hover and keyboard focus now means: do not schedule the next step.
+  A step already in flight finishes.
+- `prefers-reduced-motion: reduce` still suppresses all of this — no
+  stepping, no clones, no arc — and switches the viewport to
+  `overflow-x: auto` so every logo stays reachable by scroll and keyboard.
+- The even-clone-count rule this section previously required no longer
+  applies. Real rotation recycles tiles instead of a track shifting by a fixed
+  percentage, so any copy count covering the viewport twice over is fine.
 
 ## Design fidelity
 
@@ -137,7 +161,9 @@ All from Elementor's free tier; Elementor Pro is not required.
 - Images — `Controls_Manager::GALLERY`
 - Image size — `Controls_Manager::SELECT` over `get_intermediate_image_sizes()` plus `full`, default `medium`. Not `Group_Control_Image_Size`: that control also emits custom dimensions and cropping, which would put resizing logic in the renderer for no gain here
 - Direction — select, left (default) / right
-- Speed — slider, px per second, default `60`, range 10–300
+- Step duration — slider, ms, default `600`, range 100–3000
+- Pause — slider, ms, default `2000`, range 0–10000
+- Arc height — slider, px, default `24`, range 0–120 (`0` is flat)
 - Pause on hover — switcher, default on
 - Full bleed — switcher, default on
 
@@ -162,14 +188,24 @@ falls back to server-side rendering over AJAX when it is absent.
 ## Testing
 
 Playwright, against the foundation's local WordPress harness, driving the
-shortcode on a seeded page (the existing `tests/global-setup.js` pattern):
+shortcode on a seeded page (the existing `tests/global-setup.js` pattern).
+
+**Updated 2026-07-23 (stepped rotation and arc):** items 2 and 3 below described
+the continuous marquee's even-clone-count rule and `--ttt-marquee-duration`,
+both gone now. Current coverage (`tests/marquee.spec.js`): after one step the
+leading item has moved to the end of the track (and the mirror for
+`direction="right"`); order does not change during the dwell; hovering
+prevents the next step (and does not when `pause_on_hover` is off); an item
+near the edge has a more negative arc `translateY` than the centre item, which
+sits within a pixel of zero; `arc="0"` leaves every item's transform flat;
+reduced motion still yields no clones, no track transform, a scrollable
+viewport, no mask and `tabindex="0"`.
 
 1. Every selected logo renders, with its alt text.
-2. The track is cloned to at least twice the viewport width, with an even number
-   of copies.
-3. `--ttt-marquee-duration` matches `(trackWidth ÷ 2) ÷ speed` within tolerance.
-4. The animation pauses on hover when the control is on, and does not when off.
-5. Under `prefers-reduced-motion: reduce`, no animation runs and the viewport is
+2. The track is cloned to at least twice the viewport width.
+3. Stepping and the arc behave as above.
+4. Hovering pauses stepping when the control is on, and does not when off.
+5. Under `prefers-reduced-motion: reduce`, nothing steps and the viewport is
    horizontally scrollable.
 6. The fade mask is applied to the viewport.
 7. With full bleed on, the widget's width exceeds its container's width.

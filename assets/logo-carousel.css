@@ -1,14 +1,14 @@
 /*
- * Top Tier Tutors — logo marquee.
+ * Top Tier Tutors — logo carousel.
  *
- * Motion is CSS only. JavaScript clones the track and sets
- * --ttt-marquee-duration; everything below works without it, just static.
+ * Nothing here animates. Stepping, the pause between steps and the vertical
+ * arc are all driven by JavaScript setting inline transforms and transitions
+ * on the track and its items; this stylesheet only lays the strip out.
  */
 
 .ttt-marquee {
 	--ttt-marquee-height: 200px;
 	--ttt-marquee-gap: 60px;
-	--ttt-marquee-duration: 40s;
 	/* Replaced by JS with the client width, which excludes the scrollbar. */
 	--ttt-vw: 100vw;
 
@@ -73,22 +73,9 @@
 }
 
 /*
- * Gated on data-ttt-ready, which the script sets once it has cloned the track.
- * Without JS a single set would slide halfway out of view against blank space
- * and snap back on every cycle; un-cloned, the strip must simply sit still.
- */
-.ttt-marquee[data-ttt-ready="1"] .ttt-marquee__track {
-	animation: ttt-marquee-scroll var(--ttt-marquee-duration) linear infinite;
-}
-
-.ttt-marquee[data-direction="right"] .ttt-marquee__track {
-	animation-direction: reverse;
-}
-
-/*
  * The gap is a margin on every item, including the last, rather than flex
- * `gap`. Flex gap leaves no space after the final tile, so the wrap from the
- * end of the track back to its start would jump by one gap on every loop.
+ * `gap`. Flex gap leaves no space after the final tile, so a recycled item
+ * arriving at the end would land flush against whatever follows it.
  */
 .ttt-marquee__item {
 	flex: 0 0 auto;
@@ -107,36 +94,12 @@
 	max-width: none;
 }
 
-@keyframes ttt-marquee-scroll {
-	from {
-		transform: translateX(0);
-	}
-
-	to {
-		transform: translateX(-50%);
-	}
-}
-
 /*
- * focus-within as well as hover: a keyboard user tabbing into the strip needs
- * it to hold still just as much as a mouse user reading it does.
- */
-.ttt-marquee[data-pause-on-hover="1"]:hover .ttt-marquee__track,
-.ttt-marquee[data-pause-on-hover="1"]:focus-within .ttt-marquee__track {
-	animation-play-state: paused;
-}
-
-/*
- * Reduced motion drops the animation entirely. The strip then has to stay
- * reachable, so the viewport becomes scrollable rather than clipping whatever
- * does not fit.
+ * Reduced motion keeps the strip static (JS never steps it in the first
+ * place) but still has to stay reachable, so the viewport becomes scrollable
+ * rather than clipping whatever does not fit.
  */
 @media (prefers-reduced-motion: reduce) {
-	.ttt-marquee__track,
-	.ttt-marquee[data-ttt-ready="1"] .ttt-marquee__track {
-		animation: none;
-	}
-
 	.ttt-marquee__viewport {
 		overflow-x: auto;
 

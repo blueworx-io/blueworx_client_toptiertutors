@@ -44,7 +44,9 @@ class Blueworx_TopTierTutors_Marquee_Shortcode {
 			array(
 				'ids'            => '',
 				'size'           => 'medium',
-				'speed'          => 60,
+				'step_ms'        => 600,
+				'pause_ms'       => 2000,
+				'arc'            => 24,
 				'direction'      => 'left',
 				'pause_on_hover' => 'yes',
 				'full_bleed'     => 'yes',
@@ -59,7 +61,9 @@ class Blueworx_TopTierTutors_Marquee_Shortcode {
 			array(
 				'ids'            => explode( ',', $atts['ids'] ),
 				'image_size'     => sanitize_key( $atts['size'] ),
-				'speed'          => absint( $atts['speed'] ),
+				'step_ms'        => absint( $atts['step_ms'] ),
+				'pause_ms'       => absint( $atts['pause_ms'] ),
+				'arc'            => absint( $atts['arc'] ),
 				'direction'      => sanitize_key( $atts['direction'] ),
 				'pause_on_hover' => 'no' !== $atts['pause_on_hover'],
 				'full_bleed'     => 'no' !== $atts['full_bleed'],
