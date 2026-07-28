@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Plugin Name:       BlueWorx Labs | Top Tier Tutors
  * Plugin URI:        https://github.com/blueworx-io/blueworx_client_toptiertutors
