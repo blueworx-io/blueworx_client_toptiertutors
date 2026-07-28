@@ -2,10 +2,12 @@
  * Top Tier Tutors — logo carousel.
  *
  * Motion is entirely JavaScript: nothing animates via CSS. The strip advances
- * one step at a time (the leading item's width plus its gap), pauses, then
- * repeats. Each item also lifts toward the top as it moves away from centre —
- * the "arc" — with its own translateY, composed alongside the track's own
- * translateX.
+ * one logo at a time, pauses, then repeats. Every rest position puts a logo on
+ * the viewport's centre line — the strip steps from one logo's centre to the
+ * next, not by a fixed width — because the edge fade is fully opaque only at
+ * the centre, so a gap landing there is the one position that reads as broken.
+ * Each item also lifts toward the top as it moves away from centre — the
+ * "arc" — with its own translateY, composed alongside the track's translateX.
  *
  * Besides driving the motion, this file does what CSS cannot: fill the track
  * with enough copies to loop at any viewport width.
@@ -197,6 +199,89 @@
 	}
 
 	/**
+	 * How far the track has to move for an item's centre to sit on the
+	 * viewport's centre line.
+	 *
+	 * Measured from live rects rather than offsetLeft, which rounds to whole
+	 * pixels and would leave a logo up to a pixel off centre. Only meaningful
+	 * at rest: mid-transition a rect reports the animating position, not the
+	 * resting one.
+	 *
+	 * @param {HTMLElement} item         Tile element.
+	 * @param {DOMRect}     viewportRect The marquee viewport's rect.
+	 * @return {number} Signed pixel delta to add to the track's offset.
+	 */
+	function centringDelta(item, viewportRect) {
+		var rect = item.getBoundingClientRect();
+
+		return viewportRect.left + viewportRect.width / 2 - (rect.left + rect.width / 2);
+	}
+
+	/**
+	 * The item the strip should centre on when it first lays out: the first one
+	 * whose centre has reached the centre line. Centring on it pulls the track
+	 * left, never right, so the strip still covers the left edge.
+	 *
+	 * @param {Array<HTMLElement>} items        Item elements, in track order.
+	 * @param {DOMRect}            viewportRect The marquee viewport's rect.
+	 * @return {HTMLElement} The item to anchor on.
+	 */
+	function initialAnchor(items, viewportRect) {
+		for (var i = 0; i < items.length; i++) {
+			if (centringDelta(items[i], viewportRect) <= 0) {
+				return items[i];
+			}
+		}
+
+		return items[items.length - 1];
+	}
+
+	/**
+	 * Move items that have passed fully off one edge round to the other end.
+	 *
+	 * The offset is corrected by each moved item's width, so the strip does not
+	 * shift on screen: recycling is bookkeeping, not a visible move. It is also
+	 * what stops the offset growing without bound as the strip steps.
+	 * Transitions must already be off.
+	 *
+	 * @param {HTMLElement} track        Track element.
+	 * @param {DOMRect}     viewportRect The marquee viewport's rect.
+	 * @param {Object}      state        Per-root running state.
+	 * @param {string}      edge         'left' sends leading items to the end,
+	 *                                    'right' is the mirror.
+	 * @return {void}
+	 */
+	function recycleOffscreen(track, viewportRect, state, edge) {
+		var leading = 'left' === edge;
+
+		while (track.children.length > 1) {
+			var item = leading ? track.firstElementChild : track.lastElementChild;
+
+			if (item === state.anchor) {
+				return;
+			}
+
+			var rect = item.getBoundingClientRect();
+
+			if (leading ? rect.right > viewportRect.left : rect.left < viewportRect.right) {
+				return;
+			}
+
+			var width = stepWidthOf(item);
+
+			if (leading) {
+				track.appendChild(item);
+				state.offset += width;
+			} else {
+				track.insertBefore(item, track.firstElementChild);
+				state.offset -= width;
+			}
+
+			setTrackOffset(track, state.offset);
+		}
+	}
+
+	/**
 	 * Read a marquee root's settings from its data attributes.
 	 *
 	 * @param {HTMLElement} root Marquee root.
@@ -272,9 +357,10 @@
 	}
 
 	/**
-	 * Perform one step: advance the track by a leading (or trailing) item's
-	 * width, recycling that item to the other end, with the arc animating
-	 * alongside the slide.
+	 * Perform one step: slide the strip from the logo currently on the centre
+	 * line to its neighbour, so a logo is centred at rest either side of the
+	 * move. Items that leave the far edge are recycled round, and the arc
+	 * animates alongside the slide.
 	 *
 	 * @param {HTMLElement} root  Marquee root.
 	 * @param {Object}      state Per-root running state.
@@ -292,65 +378,70 @@
 			return;
 		}
 
-		var items = [].slice.call(track.children);
-
-		if (items.length < 2) {
+		if (track.children.length < 2) {
 			scheduleNext(root, state);
 
 			return;
 		}
 
 		var settings = state.settings;
+		var toRight = 'right' === settings.direction;
+
+		// Stepping right consumes items from the front, so its recycling has to
+		// happen before the move rather than after it. Done with transitions
+		// off, it is invisible.
+		if (toRight) {
+			var itemsBeforeRecycle = [].slice.call(track.children);
+
+			disableTransitions(track, itemsBeforeRecycle);
+			recycleOffscreen(track, viewport.getBoundingClientRect(), state, 'right');
+			forceReflow(track);
+		}
+
+		var items = [].slice.call(track.children);
+		var index = items.indexOf(state.anchor);
+		var next = index < 0 ? null : items[index + (toRight ? -1 : 1)];
+
+		if (!next) {
+			// No neighbour to centre on — the track is too short, or the anchor
+			// has been removed from under us. Re-anchoring on the next layout
+			// is the recovery; stepping to nowhere is not.
+			scheduleNext(root, state);
+
+			return;
+		}
 
 		state.midStep = true;
 
-		if ('right' === settings.direction) {
-			// Mirrors the left case: the recycle-and-instant-reposition happens
-			// first (invisibly), then the track transitions to reveal it.
-			var lastItem = items[items.length - 1];
-			var lastWidth = stepWidthOf(lastItem);
+		var delta = centringDelta(next, viewport.getBoundingClientRect());
+
+		state.anchor = next;
+		state.offset += delta;
+
+		enableTransitions(track, items, settings.stepMs);
+		applyArc(items, viewport.getBoundingClientRect(), settings.arc, delta);
+		setTrackOffset(track, state.offset);
+
+		onStepTransitionEnd(track, settings.stepMs, function () {
+			if (state.destroyed) {
+				return;
+			}
 
 			disableTransitions(track, items);
-			track.insertBefore(lastItem, track.firstChild);
-			setTrackOffset(track, -lastWidth);
+
+			if (!toRight) {
+				recycleOffscreen(track, viewport.getBoundingClientRect(), state, 'left');
+			}
+
+			var itemsAfterRecycle = [].slice.call(track.children);
+
+			applyArc(itemsAfterRecycle, viewport.getBoundingClientRect(), settings.arc, 0);
 			forceReflow(track);
+			enableTransitions(track, itemsAfterRecycle, settings.stepMs);
 
-			var itemsAfterInsert = [].slice.call(track.children);
-
-			enableTransitions(track, itemsAfterInsert, settings.stepMs);
-			applyArc(itemsAfterInsert, viewport.getBoundingClientRect(), settings.arc, lastWidth);
-			setTrackOffset(track, 0);
-
-			onStepTransitionEnd(track, settings.stepMs, function () {
-				state.midStep = false;
-				scheduleNext(root, state);
-			});
-		} else {
-			var leadingItem = items[0];
-			var stepPx = stepWidthOf(leadingItem);
-
-			applyArc(items, viewport.getBoundingClientRect(), settings.arc, -stepPx);
-			setTrackOffset(track, -stepPx);
-
-			onStepTransitionEnd(track, settings.stepMs, function () {
-				if (state.destroyed) {
-					return;
-				}
-
-				disableTransitions(track, items);
-				track.appendChild(leadingItem);
-				setTrackOffset(track, 0);
-
-				var itemsAfterRecycle = [].slice.call(track.children);
-
-				applyArc(itemsAfterRecycle, viewport.getBoundingClientRect(), settings.arc, 0);
-				forceReflow(track);
-				enableTransitions(track, itemsAfterRecycle, settings.stepMs);
-
-				state.midStep = false;
-				scheduleNext(root, state);
-			});
-		}
+			state.midStep = false;
+			scheduleNext(root, state);
+		});
 	}
 
 	/**
@@ -479,10 +570,12 @@
 			return;
 		}
 
-		// Enough copies to cover twice the viewport. Real rotation recycles
-		// tiles rather than looping a percentage shift, so — unlike the old
-		// marquee — the copy count no longer needs to be even.
-		var copies = Math.max(1, Math.ceil(Math.max(viewport.clientWidth * 2, oneSet * 2) / oneSet));
+		// Enough copies to cover twice the viewport, plus one set: centring the
+		// anchor pulls the track left by up to a whole tile, and that slack has
+		// to come from somewhere or the right edge runs dry. Real rotation
+		// recycles tiles rather than looping a percentage shift, so — unlike
+		// the old marquee — the copy count no longer needs to be even.
+		var copies = Math.max(2, Math.ceil(Math.max(viewport.clientWidth * 2, oneSet * 2) / oneSet) + 1);
 
 		for (var copy = 1; copy < copies; copy++) {
 			for (var i = 0; i < originals.length; i++) {
@@ -503,18 +596,33 @@
 
 		var settings = readSettings(root);
 		var allItems = [].slice.call(track.children);
+		var viewportRect = viewport.getBoundingClientRect();
 
-		enableTransitions(track, allItems, settings.stepMs);
-		setTrackOffset(track, 0);
-		applyArc(allItems, viewport.getBoundingClientRect(), settings.arc, 0);
+		// Laid out flush left, whichever logo falls on the centre line is
+		// chance — and with tiles of differing widths, so is every rest
+		// position after it. Anchoring here is what makes the strip start
+		// centred; stepping from centre to centre is what keeps it that way.
+		var anchor = initialAnchor(allItems, viewportRect);
+		// Read before the track moves — afterwards the anchor is centred and
+		// its delta is zero.
+		var offset = centringDelta(anchor, viewportRect);
+
+		disableTransitions(track, allItems);
+		setTrackOffset(track, offset);
 
 		var state = {
 			settings: settings,
+			anchor: anchor,
+			offset: offset,
 			timer: null,
 			midStep: false,
 			hovered: false,
 			destroyed: false,
 		};
+
+		applyArc(allItems, viewportRect, settings.arc, 0);
+		forceReflow(track);
+		enableTransitions(track, allItems, settings.stepMs);
 
 		root.tttState = state;
 

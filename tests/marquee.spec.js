@@ -263,6 +263,56 @@ test('does not pause on hover when pause_on_hover is off', async ({ page }) => {
   });
 });
 
+/**
+ * Distance, in px, between the viewport's centre line and the centre of the
+ * item nearest to it. Zero means a logo is sitting dead centre.
+ */
+const centreMiss = (page) =>
+  page.locator('.ttt-marquee').evaluate((root) => {
+    const viewport = root.querySelector('.ttt-marquee__viewport');
+    const vRect = viewport.getBoundingClientRect();
+    const vCentre = vRect.left + vRect.width / 2;
+
+    return Array.from(root.querySelectorAll('.ttt-marquee__item')).reduce((best, item) => {
+      const rect = item.getBoundingClientRect();
+      const miss = Math.abs(rect.left + rect.width / 2 - vCentre);
+
+      return miss < best ? miss : best;
+    }, Infinity);
+  });
+
+// Logos are different widths, so a strip that rests at translateX(0) — first
+// item flush with the left edge — leaves whatever lands mid-strip to chance.
+// The edge fade is fully opaque only at the centre, so an empty centre is the
+// one position that reads as broken.
+[390, 1025, 1920].forEach((width) => {
+  test(`rests with a logo on the centre line at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width: width, height: 900 });
+    await page.goto(fixtures().marquee);
+    await page.waitForFunction(() => document.querySelector('[data-ttt-clone]') !== null);
+
+    expect(await centreMiss(page)).toBeLessThanOrEqual(1);
+  });
+});
+
+test('lands the next logo on the centre line after a step', async ({ page }) => {
+  await page.goto(fixtures().marqueeStep);
+
+  const track = page.locator('.ttt-marquee__track');
+  await track.evaluate((el) => {
+    window.__tttCentreStash = el.firstElementChild;
+  });
+
+  await page.waitForFunction(() => {
+    const el = document.querySelector('.ttt-marquee__track');
+    return el.lastElementChild === window.__tttCentreStash;
+  });
+
+  // Polled rather than asserted once: the step lands the centring, and the
+  // recycle that follows it must not disturb what the step just achieved.
+  await expect.poll(() => centreMiss(page)).toBeLessThanOrEqual(1);
+});
+
 test('lifts items away from centre when arc is set', async ({ page }) => {
   await page.goto(fixtures().marqueeArc);
   await page.waitForFunction(() => document.querySelector('[data-ttt-clone]') !== null);
