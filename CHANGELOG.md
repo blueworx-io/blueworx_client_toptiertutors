@@ -4,6 +4,16 @@ All notable changes to this plugin are documented here. Versions follow semver �
 patch for fixes, minor for features — and every pull request bumps the version
 and adds its entry here (CI enforces both).
 
+## 0.3.1
+
+- Logo carousel now always rests with a logo on the strip's centre line, at any
+  viewport width. It previously started flush left and stepped by the leading
+  item's width, so with logos of differing widths whatever landed mid-strip was
+  chance — and the edge fade is fully opaque only at the centre, which made an
+  empty centre the one position that read as broken. Steps now run centre to
+  centre, and items are recycled once they have left the far edge rather than
+  on every step. No markup, CSS or setting changes.
+
 ## 0.3.0
 
 - Logo carousel motion replaced: continuous marquee drift is gone, at the
