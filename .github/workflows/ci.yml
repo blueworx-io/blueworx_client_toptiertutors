@@ -2,11 +2,15 @@ name: CI
 on: pull_request
 jobs:
   guardrails:
-    uses: blueworx-io/bluegroup_core_foundation/.github/workflows/ci-wordpress.yml@main
+    uses: blueworx-io/bluegroup_core_foundation/.github/workflows/ci-wordpress.yml@v1
     with:
       plugin_slug: blueworx-client-toptiertutors
       # Provision a disposable WordPress on the runner rather than pointing at a
       # staging host, so the Playwright gate cannot silently skip against a dead
       # target. See docs/wordpress-test-harness.md in the foundation.
       use_local_wordpress: true
+      # Pin the check scripts to the same major as the workflow above. This
+      # input defaults to `main`, so without it the v1 workflow would run
+      # against whatever is on the foundation's main branch today.
+      foundation_ref: v1
     secrets: inherit
