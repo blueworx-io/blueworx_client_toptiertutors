@@ -8,7 +8,12 @@ jobs:
   # folder name and the slug in buildUpdateChecker(). One less place to keep in
   # sync by hand.
   release:
-    uses: blueworx-io/bluegroup_core_foundation/.github/workflows/release-wordpress.yml@main
+    uses: blueworx-io/bluegroup_core_foundation/.github/workflows/release-wordpress.yml@v1
+    with:
+      # Pin the check scripts to the same major as the workflow above. This
+      # input defaults to `main`, so without it the v1 workflow would run
+      # against whatever is on the foundation's main branch today.
+      foundation_ref: v1
     # Required — a reusable workflow cannot widen the permissions its caller
     # gives it, so without this the publish step fails with 403.
     permissions:
